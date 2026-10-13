@@ -4,7 +4,6 @@ import { z } from "zod";
 import { faqs } from "@/data/faqs";
 import { serviceCategories, servicePages } from "@/data/services";
 import { siteConfig } from "@/data/site";
-import { maxPortfolioImageDataLength } from "@/lib/cms-constants";
 import { prisma } from "@/lib/db";
 
 const cmsSocialLinkSchema = z.object({
@@ -65,7 +64,7 @@ const optionalHttpUrlSchema = z.union([
 ]);
 const optionalImageSchema = z.union([
   optionalHttpUrlSchema,
-  z.string().max(2_796_300).regex(/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/),
+  z.string().regex(/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/),
 ]);
 
 const cmsProjectSchema = z.object({
@@ -147,18 +146,6 @@ export const adminContentSchema = z
         });
       }
     });
-
-    const totalImageDataLength = projects.reduce(
-      (total, project) => total + (project.imageUrl.startsWith("data:image/") ? project.imageUrl.length : 0),
-      0,
-    );
-    if (totalImageDataLength > maxPortfolioImageDataLength) {
-      context.addIssue({
-        code: "custom",
-        message: "Portfolio image uploads must total no more than about 2.5 MB.",
-        path: ["projects"],
-      });
-    }
   });
 
 export type CmsSettings = z.infer<typeof cmsSettingsSchema>;

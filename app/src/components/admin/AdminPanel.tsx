@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { maxPortfolioImageDataLength } from "@/lib/cms-constants";
 import type { AdminContent, CmsService, CmsSettings } from "@/lib/cms";
 
 type AdminPage = "home" | "services" | "portfolio" | "faqs" | "contact";
@@ -130,15 +129,11 @@ const emptyService: CmsService = {
   pageCta: "Contact us",
 };
 
-const maxImageBytes = 2 * 1024 * 1024;
 const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 function readImageFile(file: File): Promise<string> {
   if (!acceptedImageTypes.includes(file.type)) {
     return Promise.reject(new Error("Choose a JPG, PNG, WebP, or GIF image."));
-  }
-  if (file.size > maxImageBytes) {
-    return Promise.reject(new Error("Each image must be 2 MB or smaller."));
   }
 
   return new Promise((resolve, reject) => {
@@ -453,7 +448,7 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                 </label>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700">
-                    Project image <span className="font-normal text-slate-500">(JPG, PNG, WebP or GIF; up to 2 MB)</span>
+                    Project image <span className="font-normal text-slate-500">(JPG, PNG, WebP or GIF)</span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/gif"
@@ -464,14 +459,6 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                         setError("");
                         try {
                           const imageUrl = await readImageFile(file);
-                          const currentImageLength = project.imageUrl.startsWith("data:image/") ? project.imageUrl.length : 0;
-                          const totalImageLength = content.projects.reduce(
-                            (total, item) => total + (item.imageUrl.startsWith("data:image/") ? item.imageUrl.length : 0),
-                            0,
-                          );
-                          if (totalImageLength - currentImageLength + imageUrl.length > maxPortfolioImageDataLength) {
-                            throw new Error("All portfolio uploads together must total no more than about 2.5 MB.");
-                          }
                           updateProject({ imageUrl });
                         } catch (imageError) {
                           setError(imageError instanceof Error ? imageError.message : "Unable to read the selected image.");

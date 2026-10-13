@@ -28,7 +28,7 @@ Keep `.env` private; environment files are ignored by Git. Use HTTPS in producti
 
 ## Admin editor
 
-The admin page separates Home, Services, Portfolio, FAQs, and Contact & social into selectable categories, so only the selected page's fields are shown. It can add, edit, remove, and reorder services, FAQs, portfolio items, and social links. Each portfolio item is assigned to one of the saved services. Portfolio images can be uploaded as JPG, PNG, WebP, or GIF files up to 2 MB each (about 2.5 MB total); they are stored with the portfolio content in PostgreSQL. Portfolio items can include a live demo URL; source-code links are not displayed.
+The admin page separates Home, Services, Portfolio, FAQs, and Contact & social into selectable categories, so only the selected page's fields are shown. It can add, edit, remove, and reorder services, FAQs, portfolio items, and social links. Each portfolio item is assigned to one of the saved services. Portfolio images can be uploaded as JPG, PNG, WebP, or GIF files without an application-defined file-size limit; they are stored with the portfolio content in PostgreSQL. Hosting provider and database request/storage limits may still apply. Portfolio items can include a live demo URL; source-code links are not displayed.
 
 The CMS stores content in PostgreSQL through Neon. Prisma uses the pooled `DATABASE_URL` at runtime and `DIRECT_URL` for schema commands. Apply `npm run db:push` after pulling a schema update. Admin saves replace the FAQ and service lists with the submitted content; existing services keep their page URL unless their slug is changed.
 
