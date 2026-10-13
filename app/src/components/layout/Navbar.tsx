@@ -8,9 +8,19 @@ import { navigationItems } from "@/data/navigation";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/ui/LogoMark";
+import type { CmsService } from "@/lib/cms";
 
-export function Navbar() {
+export function Navbar({ services }: { services: CmsService[] }) {
   const [open, setOpen] = useState(false);
+  const dynamicNavigationItems = navigationItems.map((item) => ({
+    ...item,
+    children: item.children?.map((child) => {
+      const service = services.find(
+        (entry) => (entry.slug === "design-services" ? "/design" : `/${entry.slug}`) === child.href,
+      );
+      return service ? { ...child, label: service.title } : child;
+    }),
+  }));
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-xl">
@@ -27,7 +37,7 @@ export function Navbar() {
 
           {/* navbar items */}
           <div className="hidden items-center gap-7 text-sm font-medium text-slate-700 lg:flex">
-            {navigationItems.map((item) => {
+            {dynamicNavigationItems.map((item) => {
               if (item.children) {
                 return (
                   <div key={item.label} className="group relative">
@@ -81,7 +91,7 @@ export function Navbar() {
           )}
         >
           <div className="space-y-3 py-4">
-            {navigationItems.map((item) => (
+            {dynamicNavigationItems.map((item) => (
               <div key={item.label} className="space-y-2">
                 {item.children ? (
                   <div className="space-y-2">

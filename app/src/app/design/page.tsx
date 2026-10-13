@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { ServicePageTemplate } from "@/components/services/ServicePageTemplate";
-import { servicePages } from "@/data/services";
 
 export const metadata: Metadata = {
   title: "Design Services",
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function DesignPage() {
-  return <ServicePageTemplate {...servicePages.design} />;
+  return <ServicePageTemplate serviceSlug="design-services" />;
 }

@@ -37,11 +37,18 @@ model User {
 }
 
 model Service {
-  id          String   @id @default(cuid())
-  title       String
-  slug        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  description      String?
+  shortDescription String?  @db.Text
+  category         String?
+  keyServices      Json?
+  pageIntroduction String?  @db.Text
+  pagePoints       Json?
+  pageCta          String?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
 }
 
 model Project {
@@ -57,5 +64,36 @@ model FAQ {
   id        String   @id @default(cuid())
   question  String
   answer    String   @db.Text
+  sortOrder Int      @default(0)
   createdAt DateTime @default(now())
+}
+
+model SiteContent {
+  id                    String   @id @default("default")
+  tagline               String   @db.Text
+  email                 String
+  phone                 String
+  location              String
+  linkedin              String
+  instagram             String
+  heroBadge             String
+  heroTitlePrefix       String
+  heroTitleHighlight    String
+  heroTitleSuffix       String
+  heroDescription       String   @db.Text
+  heroPrimaryCta        String
+  heroSecondaryCta      String
+  companyHeading        String
+  companyDescription    String   @db.Text
+  servicesEyebrow       String
+  servicesTitle         String
+  servicesDescription   String   @db.Text
+  faqEyebrow            String
+  faqTitle              String
+  faqDescription        String   @db.Text
+  ctaEyebrow            String
+  ctaTitle              String
+  ctaPrimaryLabel       String
+  ctaSecondaryLabel     String
+  updatedAt             DateTime @updatedAt
 }

@@ -5,25 +5,32 @@ import { ServicesOverview } from "@/components/home/ServicesOverview";
 import { WhyHKSoftTech } from "@/components/home/WhyHKSoftTech";
 import { FAQAccordion } from "@/components/faq/FAQAccordion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { getCmsFaqs, getCmsServices, getCmsSettings } from "@/lib/cms";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [settings, services, faqs] = await Promise.all([
+    getCmsSettings(),
+    getCmsServices(),
+    getCmsFaqs(),
+  ]);
+
   return (
     <>
-      <Hero />
+      <Hero settings={settings} />
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid gap-8 rounded-[2rem] border border-slate-200 bg-brand-light p-8 md:grid-cols-3">
           <div>
             <div className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-blue">Company</div>
-            <p className="mt-3 text-xl font-bold text-brand-navy">Technology built for practical growth.</p>
+            <p className="mt-3 text-xl font-bold text-brand-navy">{settings.companyHeading}</p>
           </div>
           <div className="md:col-span-2 text-base leading-8 text-slate-600">
-            HK SoftTech brings together web development, AI systems, custom software, digital presence support, training and consulting for businesses, startups, students and professionals who need reliable digital progress.
+            {settings.companyDescription}
           </div>
         </div>
       </section>
 
-      <ServicesOverview />
+      <ServicesOverview services={services} settings={settings} />
       <WhyHKSoftTech />
       <AudienceSection />
 
@@ -37,16 +44,9 @@ export default function HomePage() {
             />
           </div>
           <div className="grid gap-5 md:grid-cols-2">
-            {[
-              "Web Development",
-              "AI Automation",
-              "Custom Software",
-              "Brand & Digital Presence",
-              "Career Development",
-              "Corporate Training",
-            ].map((item) => (
-              <div key={item} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 text-lg font-semibold text-brand-navy shadow-sm">
-                {item}
+            {services.slice(0, 6).map((service) => (
+              <div key={service.slug} className="rounded-[1.5rem] border border-slate-200 bg-white p-5 text-lg font-semibold text-brand-navy shadow-sm">
+                {service.title}
               </div>
             ))}
           </div>
@@ -56,17 +56,17 @@ export default function HomePage() {
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
-            eyebrow="FAQ"
-            title="Common questions from clients and learners"
-            description="Clear answers for businesses, professionals, startups and students exploring HK SoftTech services."
+            eyebrow={settings.faqEyebrow}
+            title={settings.faqTitle}
+            description={settings.faqDescription}
           />
           <div className="mt-10">
-            <FAQAccordion />
+            <FAQAccordion faqs={faqs} />
           </div>
         </div>
       </section>
 
-      <CTASection />
+      <CTASection settings={settings} />
     </>
   );
 }

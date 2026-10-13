@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Footer } from "@/components/layout/Footer";
 import { Navbar } from "@/components/layout/Navbar";
 import { siteConfig } from "@/data/site";
+import { getCmsServices, getCmsSettings } from "@/lib/cms";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,14 +52,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const [settings, services] = await Promise.all([getCmsSettings(), getCmsServices()]);
+
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full bg-white text-slate-800">
         <div className="flex min-h-screen flex-col">
-          <Navbar />
+          <Navbar services={services} />
           <main className="flex-1">{children}</main>
-          <Footer />
+          <Footer settings={settings} services={services} />
         </div>
       </body>
     </html>

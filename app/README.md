@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HK SoftTech website
 
-## Getting Started
+## Run locally
 
-First, run the development server:
+1. Install dependencies with `npm install`.
+2. Create `app/.env` and configure your MySQL connection and admin password:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+   ```dotenv
+   DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DATABASE"
+   ADMIN_PASSWORD="use-a-long-unique-password"
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Apply the database schema and generate the Prisma client:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm run db:push
+   npm run prisma:generate
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Start the website with `npm run dev`.
+5. Open `http://localhost:3000/admin` and sign in with `ADMIN_PASSWORD`.
 
-## Learn More
+Keep `.env` private; environment files are ignored by Git. Use HTTPS in production so the admin session cookie is secure.
 
-To learn more about Next.js, take a look at the following resources:
+## Admin editor
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The admin page edits the home-page hero, company summary, service and FAQ headings, call to action, existing service cards and detail-page copy, FAQs, contact details, and social links. Save changes to publish them to the public website. Existing design, layout, and service URLs stay unchanged.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The CMS stores content in the existing MySQL database. Apply `npm run db:push` after pulling a schema update. Admin saves replace the FAQ list and update existing services by their established slugs.

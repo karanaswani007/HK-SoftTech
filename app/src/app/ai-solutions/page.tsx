@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { ServicePageTemplate } from "@/components/services/ServicePageTemplate";
-import { servicePages } from "@/data/services";
 
 export const metadata: Metadata = {
   title: "AI Solutions",
@@ -9,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function AISolutionsPage() {
-  return <ServicePageTemplate {...servicePages["ai-solutions"]} />;
+  return <ServicePageTemplate serviceSlug="ai-solutions" />;
 }

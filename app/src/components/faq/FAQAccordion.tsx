@@ -3,9 +3,9 @@
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 
-import { faqs } from "@/data/faqs";
+import type { CmsFaq } from "@/lib/cms";
 
-export function FAQAccordion() {
+export function FAQAccordion({ faqs }: { faqs: CmsFaq[] }) {
   const [openIndex, setOpenIndex] = useState(0);
 
   return (
@@ -14,7 +14,7 @@ export function FAQAccordion() {
         const isOpen = openIndex === index;
 
         return (
-          <div key={faq.question} className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
+          <div key={`${faq.question}-${index}`} className="overflow-hidden rounded-[1.25rem] border border-slate-200 bg-white shadow-sm">
             <button
               type="button"
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"

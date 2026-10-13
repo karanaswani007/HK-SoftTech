@@ -5,6 +5,7 @@ import { ArrowRight, BrainCircuit, Code2, Database, Sparkles } from "lucide-reac
 
 import { Button } from "@/components/ui/Button";
 import { LogoMark } from "@/components/ui/LogoMark";
+import type { CmsSettings } from "@/lib/cms";
 
 const floatingPills = [
   { icon: Code2, label: "Web Development" },
@@ -13,7 +14,7 @@ const floatingPills = [
   { icon: Sparkles, label: "Training" },
 ];
 
-export function Hero() {
+export function Hero({ settings }: { settings: CmsSettings }) {
   return (
     <section className="relative overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(22,139,255,0.12),_transparent_42%),linear-gradient(180deg,#ffffff_0%,#f5f8fc_100%)]">
       <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-[size:30px_30px] [mask-image:radial-gradient(circle_at_center,black,transparent_85%)]" />
@@ -26,22 +27,22 @@ export function Hero() {
         >
           <div className="mb-6 flex items-center gap-3 self-start rounded-full border border-brand-blue/35 bg-brand-light px-5 py-1 text-sm font-medium text-brand-blue">
             <LogoMark compact variant="vertical" className="shrink-0"/>
-            <span>Technology partner for growth</span>
+            <span>{settings.heroBadge}</span>
           </div>
 
           <h1 className="max-w-xl text-4xl font-black leading-[0.96] tracking-[-0.05em] text-brand-navy sm:text-5xl lg:text-7xl">
-            Build Smarter. <span className="text-brand-blue">Grow Faster.</span> Go Digital.
+            {settings.heroTitlePrefix} <span className="text-brand-blue">{settings.heroTitleHighlight}</span> {settings.heroTitleSuffix}
           </h1>
           <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-            HK SoftTech helps businesses, startups, students and professionals build modern digital experiences through web development, AI solutions, custom software, training and technology consulting.
+            {settings.heroDescription}
           </p>
 
           <div className="mt-8 flex flex-wrap gap-4">
             <Button href="/contact" className="px-6">
-              Start a Project
+              {settings.heroPrimaryCta}
             </Button>
             <Button href="/services" variant="secondary" className="px-6">
-              Explore Services
+              {settings.heroSecondaryCta}
             </Button>
           </div>
 
