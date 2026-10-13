@@ -470,5 +470,10 @@ export async function saveAdminContent(content: AdminContent) {
         data: content.faqs.map((faqItem, sortOrder) => ({ ...faqItem, sortOrder })),
       });
     }
-  });
+  },
+    {
+      maxWait: 10000,
+      timeout: 20000,
+    }
+  );
 }
