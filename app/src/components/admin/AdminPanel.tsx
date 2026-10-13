@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { portfolioImageChunkSize } from "@/lib/portfolio-image-upload";
 import type { AdminContent, CmsService, CmsSettings } from "@/lib/cms";
 
 type AdminPage = "home" | "services" | "portfolio" | "faqs" | "contact";
@@ -131,23 +132,57 @@ const emptyService: CmsService = {
 
 const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
-function readImageFile(file: File): Promise<string> {
-  if (!acceptedImageTypes.includes(file.type)) {
-    return Promise.reject(new Error("Choose a JPG, PNG, WebP, or GIF image."));
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+async function requireSuccessfulResponse(response: Response, fallback: string): Promise<unknown> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new Error(`${fallback} (HTTP ${response.status}). The server returned an invalid response.`);
   }
 
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== "string") {
-        reject(new Error("Unable to read the selected image."));
-        return;
-      }
-      resolve(reader.result);
-    };
-    reader.onerror = () => reject(new Error("Unable to read the selected image."));
-    reader.readAsDataURL(file);
+  if (!response.ok) {
+    const message = isRecord(body) && typeof body.error === "string" ? body.error : fallback;
+    throw new Error(`${message} (HTTP ${response.status}).`);
+  }
+  return body;
+}
+
+async function uploadPortfolioImage(file: File): Promise<string> {
+  if (!acceptedImageTypes.includes(file.type)) {
+    throw new Error("Choose a JPG, PNG, WebP, or GIF image.");
+  }
+  if (file.size === 0) throw new Error("The selected image is empty.");
+
+  const uploadId = crypto.randomUUID();
+  const totalChunks = Math.ceil(file.size / portfolioImageChunkSize);
+  const initResponse = await fetch("/api/admin/uploads", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: uploadId, mimeType: file.type, totalChunks }),
   });
+  await requireSuccessfulResponse(initResponse, "Unable to start image upload.");
+
+  for (let index = 0; index < totalChunks; index += 1) {
+    const start = index * portfolioImageChunkSize;
+    const chunk = file.slice(start, Math.min(start + portfolioImageChunkSize, file.size));
+    const response = await fetch(`/api/admin/uploads/${uploadId}/${index}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/octet-stream" },
+      body: chunk,
+    });
+    await requireSuccessfulResponse(response, "Unable to upload image data.");
+  }
+
+  const completeResponse = await fetch(`/api/admin/uploads/${uploadId}/complete`, { method: "POST" });
+  const result = await requireSuccessfulResponse(completeResponse, "Unable to finish image upload.");
+  if (!isRecord(result) || typeof result.imageUrl !== "string") {
+    throw new Error("The server did not return the uploaded image.");
+  }
+  return result.imageUrl;
 }
 
 export function AdminPanel({ initialContent }: { initialContent: AdminContent }) {
@@ -156,6 +191,7 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(0);
   const [loggedOut, setLoggedOut] = useState(false);
 
   function updateSettings(key: Exclude<keyof CmsSettings, "socials">, value: string) {
@@ -183,10 +219,7 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(content),
       });
-      const result = await response.json();
-      if (!response.ok) {
-        throw new Error(result.error || "Unable to save website content.");
-      }
+      await requireSuccessfulResponse(response, "Unable to save website content.");
       setMessage("Changes saved and are live on the website.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save website content.");
@@ -223,8 +256,8 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
         <div className="flex items-center gap-3">
           <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-brand-blue">View website</Link>
           <button type="button" onClick={logout} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-brand-blue hover:text-brand-blue">Sign out</button>
-          <button type="submit" disabled={saving} className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? "Saving…" : "Save changes"}
+          <button type="submit" disabled={saving || uploadingImages > 0} className="rounded-full bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-blue-dark disabled:cursor-not-allowed disabled:opacity-60">
+            {uploadingImages > 0 ? "Uploading image…" : saving ? "Saving…" : "Save changes"}
           </button>
         </div>
       </div>
@@ -457,13 +490,16 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                         const file = event.target.files?.[0];
                         if (!file) return;
                         setError("");
+                        setUploadingImages((count) => count + 1);
                         try {
-                          const imageUrl = await readImageFile(file);
+                          const imageUrl = await uploadPortfolioImage(file);
                           updateProject({ imageUrl });
                         } catch (imageError) {
                           setError(imageError instanceof Error ? imageError.message : "Unable to read the selected image.");
+                        } finally {
+                          setUploadingImages((count) => count - 1);
+                          event.target.value = "";
                         }
-                        event.target.value = "";
                       }}
                     />
                   </label>
@@ -494,17 +530,17 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                   Published on website
                 </label>
                 <div className="flex gap-2 sm:col-span-2">
-                  <button type="button" disabled={projectIndex === 0} onClick={() => {
+                  <button type="button" disabled={uploadingImages > 0 || projectIndex === 0} onClick={() => {
                     const projects = [...content.projects];
                     [projects[projectIndex - 1], projects[projectIndex]] = [projects[projectIndex], projects[projectIndex - 1]];
                     setContent({ ...content, projects });
                   }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40">Move up</button>
-                  <button type="button" disabled={projectIndex === content.projects.length - 1} onClick={() => {
+                  <button type="button" disabled={uploadingImages > 0 || projectIndex === content.projects.length - 1} onClick={() => {
                     const projects = [...content.projects];
                     [projects[projectIndex + 1], projects[projectIndex]] = [projects[projectIndex], projects[projectIndex + 1]];
                     setContent({ ...content, projects });
                   }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40">Move down</button>
-                  <button type="button" onClick={() => setContent({ ...content, projects: content.projects.filter((_, index) => index !== projectIndex) })} className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">Remove</button>
+                  <button type="button" disabled={uploadingImages > 0} onClick={() => setContent({ ...content, projects: content.projects.filter((_, index) => index !== projectIndex) })} className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-40">Remove</button>
                 </div>
               </div>
             </details>

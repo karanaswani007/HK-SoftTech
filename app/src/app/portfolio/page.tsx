@@ -29,7 +29,7 @@ export default async function PortfolioPage() {
                 role={project.imageUrl ? "img" : undefined}
                 aria-label={project.imageUrl ? `${project.title} preview` : undefined}
                 className="relative flex h-56 items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(22,139,255,0.2),_transparent_55%),linear-gradient(135deg,#071A3D_0%,#0B4DFF_55%,#00B8E6_100%)] bg-cover bg-center"
-                style={project.imageUrl ? { backgroundImage: `linear-gradient(135deg, rgba(7,26,61,0.12), rgba(11,77,255,0.2)), url("${new URL(project.imageUrl).href}")` } : undefined}
+                style={project.imageUrl ? { backgroundImage: `linear-gradient(135deg, rgba(7,26,61,0.12), rgba(11,77,255,0.2)), url("${project.imageUrl}")` } : undefined}
               >
                 {!project.imageUrl ? <BriefcaseBusiness size={52} className="text-white/85" aria-hidden="true" /> : null}
                 {project.featured ? (

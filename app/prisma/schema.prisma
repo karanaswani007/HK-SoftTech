@@ -74,6 +74,30 @@ model Project {
   updatedAt   DateTime    @updatedAt
 }
 
+model PortfolioImage {
+  id        String   @id @default(cuid())
+  mimeType  String
+  data      Bytes
+  createdAt DateTime @default(now())
+}
+
+model PortfolioImageUpload {
+  id          String                @id
+  mimeType    String
+  totalChunks Int
+  createdAt   DateTime              @default(now())
+  chunks      PortfolioImageChunk[]
+}
+
+model PortfolioImageChunk {
+  uploadId String
+  index    Int
+  data     Bytes
+  upload   PortfolioImageUpload @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+
+  @@id([uploadId, index])
+}
+
 model FAQ {
   id        String   @id @default(cuid())
   question  String

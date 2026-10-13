@@ -64,7 +64,7 @@ const optionalHttpUrlSchema = z.union([
 ]);
 const optionalImageSchema = z.union([
   optionalHttpUrlSchema,
-  z.string().regex(/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/),
+  z.string().regex(/^\/api\/portfolio\/images\/[a-z0-9]+$/),
 ]);
 
 const cmsProjectSchema = z.object({
@@ -338,7 +338,21 @@ export const getPortfolioProjects = cache(async (publishedOnly = true): Promise<
   const serviceByTitle = new Map(services.map((service) => [service.title.toLowerCase(), service.slug]));
   const servicesBySlug = new Map(services.map((service) => [service.slug, service]));
 
-  return projects.map((project) => {
+  const projectsWithStoredImages = await Promise.all(projects.map(async (project) => {
+    const legacyImage = project.imageUrl?.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/]+=*)$/);
+    if (!legacyImage) {
+      return project;
+    }
+
+    const image = await prisma.portfolioImage.create({
+      data: { mimeType: legacyImage[1], data: Buffer.from(legacyImage[2], "base64") },
+      select: { id: true },
+    });
+    const imageUrl = `/api/portfolio/images/${image.id}`;
+    return prisma.project.update({ where: { id: project.id }, data: { imageUrl } });
+  }));
+
+  return projectsWithStoredImages.map((project) => {
     const serviceSlug = project.category && serviceSlugs.has(project.category)
       ? project.category
       : serviceByTitle.get(project.category?.toLowerCase() ?? "") ?? services[0]?.slug ?? "";
