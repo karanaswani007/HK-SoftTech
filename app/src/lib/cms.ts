@@ -45,10 +45,29 @@ const cmsServiceSchema = z.object({
   pageCta: z.string().trim().min(1).max(120),
 });
 
+const optionalHttpUrlSchema = z.union([
+  z.literal(""),
+  z.url().refine((value) => value.startsWith("http://") || value.startsWith("https://")),
+]);
+
+const cmsProjectSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().trim().min(1).max(160),
+  description: z.string().trim().min(1).max(3000),
+  category: z.string().trim().min(1).max(100),
+  type: z.enum(["PROJECT", "PRODUCT"]),
+  imageUrl: optionalHttpUrlSchema,
+  projectUrl: optionalHttpUrlSchema,
+  sourceUrl: optionalHttpUrlSchema,
+  featured: z.boolean(),
+  published: z.boolean(),
+});
+
 export const adminContentSchema = z
   .object({
     settings: cmsSettingsSchema,
     services: z.array(cmsServiceSchema).min(1).max(30),
+    projects: z.array(cmsProjectSchema).max(100),
     faqs: z
       .array(
         z.object({
@@ -58,7 +77,7 @@ export const adminContentSchema = z
       )
       .max(100),
   })
-  .superRefine(({ services }, context) => {
+  .superRefine(({ services, projects }, context) => {
     if (new Set(services.map((service) => service.slug)).size !== services.length) {
       context.addIssue({
         code: "custom",
@@ -66,11 +85,21 @@ export const adminContentSchema = z
         path: ["services"],
       });
     }
+
+    const projectIds = projects.flatMap((project) => project.id ? [project.id] : []);
+    if (new Set(projectIds).size !== projectIds.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Portfolio item IDs must be unique.",
+        path: ["projects"],
+      });
+    }
   });
 
 export type CmsSettings = z.infer<typeof cmsSettingsSchema>;
 export type CmsService = z.infer<typeof cmsServiceSchema>;
 export type CmsFaq = z.infer<typeof adminContentSchema>["faqs"][number];
+export type CmsProject = z.infer<typeof cmsProjectSchema>;
 export type AdminContent = z.infer<typeof adminContentSchema>;
 
 export const defaultCmsSettings: CmsSettings = {
@@ -204,14 +233,43 @@ export const getCmsFaqs = cache(async (): Promise<CmsFaq[]> => {
   return contentExists ? [] : faqs;
 });
 
+export const getPortfolioProjects = cache(async (publishedOnly = true): Promise<CmsProject[]> => {
+  if (!process.env.DATABASE_URL) {
+    return [];
+  }
+
+  const projects = await prisma.project.findMany({
+    where: publishedOnly ? { published: true } : undefined,
+    orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+  });
+
+  return projects.map((project) => ({
+    id: project.id,
+    title: project.title,
+    description: project.description ?? "",
+    category: project.category ?? "Uncategorized",
+    type: project.type,
+    imageUrl: project.imageUrl ?? "",
+    projectUrl: project.projectUrl ?? "",
+    sourceUrl: project.sourceUrl ?? "",
+    featured: project.featured,
+    published: project.published,
+  }));
+});
+
 export async function getCmsService(slug: string): Promise<CmsService | undefined> {
   const services = await getCmsServices();
   return services.find((service) => service.slug === slug);
 }
 
 export async function getAdminContent(): Promise<AdminContent> {
-  const [settings, services, savedFaqs] = await Promise.all([getCmsSettings(), getCmsServices(), getCmsFaqs()]);
-  return { settings, services, faqs: savedFaqs };
+  const [settings, services, projects, savedFaqs] = await Promise.all([
+    getCmsSettings(),
+    getCmsServices(),
+    getPortfolioProjects(false),
+    getCmsFaqs(),
+  ]);
+  return { settings, services, projects, faqs: savedFaqs };
 }
 
 export async function saveAdminContent(content: AdminContent) {
@@ -302,6 +360,25 @@ export async function saveAdminContent(content: AdminContent) {
           sortOrder,
         },
       });
+    }
+
+    const submittedProjectIds = content.projects.flatMap((project) => project.id ? [project.id] : []);
+    await transaction.project.deleteMany({
+      where: submittedProjectIds.length > 0 ? { id: { notIn: submittedProjectIds } } : {},
+    });
+
+    for (const [sortOrder, project] of content.projects.entries()) {
+      const { id, ...projectData } = project;
+      if (id) {
+        await transaction.project.update({
+          where: { id },
+          data: { ...projectData, sortOrder },
+        });
+      } else {
+        await transaction.project.create({
+          data: { ...projectData, sortOrder },
+        });
+      }
     }
 
     await transaction.fAQ.deleteMany();

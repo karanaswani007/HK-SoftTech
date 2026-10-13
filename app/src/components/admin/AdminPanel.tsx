@@ -213,6 +213,113 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
         ))}
       </section>
 
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-brand-navy">Portfolio</h2>
+            <p className="mt-1 text-sm text-slate-600">Showcase products and projects on the public portfolio page.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setContent({
+              ...content,
+              projects: [
+                ...content.projects,
+                {
+                  title: "",
+                  description: "",
+                  category: "",
+                  type: "PROJECT",
+                  imageUrl: "",
+                  projectUrl: "",
+                  sourceUrl: "",
+                  featured: false,
+                  published: true,
+                },
+              ],
+            })}
+            className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light"
+          >
+            Add project / product
+          </button>
+        </div>
+        {content.projects.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+            No portfolio entries yet. Add your first product or project here.
+          </div>
+        ) : null}
+        {content.projects.map((project, projectIndex) => {
+          const updateProject = (changes: Partial<typeof project>) => {
+            const projects = [...content.projects];
+            projects[projectIndex] = { ...project, ...changes };
+            setContent({ ...content, projects });
+          };
+
+          return (
+            <details key={project.id ?? `new-${projectIndex}`} className="group rounded-2xl border border-slate-200 bg-white shadow-sm" open={projectIndex === 0}>
+              <summary className="cursor-pointer list-none px-5 py-4 text-base font-semibold text-brand-navy marker:hidden">
+                {project.title || `New portfolio item ${projectIndex + 1}`}
+                <span className="float-right text-slate-400 group-open:rotate-180">⌄</span>
+              </summary>
+              <div className="grid gap-4 border-t border-slate-100 p-5 sm:grid-cols-2">
+                <label className="block text-sm font-medium text-slate-700">
+                  Name
+                  <input className={inputClass} value={project.title} onChange={(event) => updateProject({ title: event.target.value })} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Type
+                  <select className={inputClass} value={project.type} onChange={(event) => updateProject({ type: event.target.value as "PROJECT" | "PRODUCT" })}>
+                    <option value="PROJECT">Project</option>
+                    <option value="PRODUCT">Product</option>
+                  </select>
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Category / technology
+                  <input className={inputClass} value={project.category} onChange={(event) => updateProject({ category: event.target.value })} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+                  Description
+                  <textarea className={inputClass} rows={3} value={project.description} onChange={(event) => updateProject({ description: event.target.value })} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
+                  Image URL <span className="font-normal text-slate-500">(optional, use a public HTTPS image URL)</span>
+                  <input type="url" className={inputClass} value={project.imageUrl} onChange={(event) => updateProject({ imageUrl: event.target.value })} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Live product / demo URL
+                  <input type="url" className={inputClass} value={project.projectUrl} onChange={(event) => updateProject({ projectUrl: event.target.value })} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Source code URL
+                  <input type="url" className={inputClass} value={project.sourceUrl} onChange={(event) => updateProject({ sourceUrl: event.target.value })} />
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={project.featured} onChange={(event) => updateProject({ featured: event.target.checked })} className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" />
+                  Feature this item
+                </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <input type="checkbox" checked={project.published} onChange={(event) => updateProject({ published: event.target.checked })} className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" />
+                  Published on website
+                </label>
+                <div className="flex gap-2 sm:col-span-2">
+                  <button type="button" disabled={projectIndex === 0} onClick={() => {
+                    const projects = [...content.projects];
+                    [projects[projectIndex - 1], projects[projectIndex]] = [projects[projectIndex], projects[projectIndex - 1]];
+                    setContent({ ...content, projects });
+                  }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40">Move up</button>
+                  <button type="button" disabled={projectIndex === content.projects.length - 1} onClick={() => {
+                    const projects = [...content.projects];
+                    [projects[projectIndex + 1], projects[projectIndex]] = [projects[projectIndex], projects[projectIndex + 1]];
+                    setContent({ ...content, projects });
+                  }} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 disabled:opacity-40">Move down</button>
+                  <button type="button" onClick={() => setContent({ ...content, projects: content.projects.filter((_, index) => index !== projectIndex) })} className="ml-auto rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">Remove</button>
+                </div>
+              </div>
+            </details>
+          );
+        })}
+      </section>
+
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

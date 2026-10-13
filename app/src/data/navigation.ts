@@ -1,6 +1,7 @@
 export const navigationItems = [
   { label: "Home", href: "/" },
   { label: "About", href: "/about" },
+  { label: "Portfolio", href: "/portfolio" },
   { label: "Services", href: "/services", children: [
     { label: "Web Development", href: "/web-development" },
     { label: "AI Solutions", href: "/ai-solutions" },
@@ -24,6 +25,7 @@ export const navigationItems = [
 export const footerLinks = {
   company: [
     { label: "About", href: "/about" },
+    { label: "Portfolio", href: "/portfolio" },
     { label: "Services", href: "/services" },
     { label: "Solutions", href: "/services" },
     { label: "Training", href: "/training" },

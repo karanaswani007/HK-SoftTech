@@ -28,7 +28,7 @@ Keep `.env` private; environment files are ignored by Git. Use HTTPS in producti
 
 ## Admin editor
 
-The admin page edits the home-page hero, company summary, service and FAQ headings, call to action, existing service cards and detail-page copy, FAQs, contact details, and social links. Save changes to publish them to the public website. Existing design, layout, and service URLs stay unchanged.
+The admin page edits the home-page hero, company summary, service and FAQ headings, call to action, existing service cards and detail-page copy, FAQs, contact details, social links, and portfolio products/projects. Add portfolio images by entering a publicly accessible HTTPS image URL. Save changes to publish them to the public website. Existing design, layout, and service URLs stay unchanged.
 
 The CMS stores content in PostgreSQL through Neon. Prisma uses the pooled `DATABASE_URL` at runtime and `DIRECT_URL` for schema commands. Apply `npm run db:push` after pulling a schema update. Admin saves replace the FAQ list and update existing services by their established slugs.
 

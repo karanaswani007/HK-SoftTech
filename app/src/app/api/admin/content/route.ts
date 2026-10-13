@@ -56,6 +56,7 @@ export async function PUT(request: Request) {
     revalidatePath("/services");
     revalidatePath("/faq");
     revalidatePath("/contact");
+    revalidatePath("/portfolio");
     for (const service of parsed.data.services) {
       const href = service.slug === "design-services" ? "/design" : `/${service.slug}`;
       revalidatePath(href);
