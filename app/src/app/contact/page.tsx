@@ -16,9 +16,9 @@ export default async function ContactPage() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Contact"
-        title="Tell us about your project"
-        description="Tell us what you are building, improving, or planning so we can guide the right next step."
+        eyebrow={settings.contactPageEyebrow}
+        title={settings.contactPageTitle}
+        description={settings.contactPageDescription}
       />
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[0.8fr_1.2fr]">

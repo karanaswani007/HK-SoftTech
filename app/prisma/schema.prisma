@@ -83,31 +83,41 @@ model FAQ {
 }
 
 model SiteContent {
-  id                    String   @id @default("default")
-  tagline               String   @db.Text
-  email                 String
-  phone                 String
-  location              String
-  linkedin              String
-  instagram             String
-  heroBadge             String
-  heroTitlePrefix       String
-  heroTitleHighlight    String
-  heroTitleSuffix       String
-  heroDescription       String   @db.Text
-  heroPrimaryCta        String
-  heroSecondaryCta      String
-  companyHeading        String
-  companyDescription    String   @db.Text
-  servicesEyebrow       String
-  servicesTitle         String
-  servicesDescription   String   @db.Text
-  faqEyebrow            String
-  faqTitle              String
-  faqDescription        String   @db.Text
-  ctaEyebrow            String
-  ctaTitle              String
-  ctaPrimaryLabel       String
-  ctaSecondaryLabel     String
-  updatedAt             DateTime @updatedAt
+  id                       String   @id @default("default")
+  tagline                  String   @db.Text
+  email                    String
+  phone                    String
+  location                 String
+  linkedin                 String
+  instagram                String
+  socialLinks              Json?
+  heroBadge                String
+  heroTitlePrefix          String
+  heroTitleHighlight       String
+  heroTitleSuffix          String
+  heroDescription          String   @db.Text
+  heroPrimaryCta           String
+  heroSecondaryCta         String
+  companyHeading           String
+  companyDescription       String   @db.Text
+  servicesEyebrow          String
+  servicesTitle            String
+  servicesDescription      String   @db.Text
+  faqEyebrow               String
+  faqTitle                 String
+  faqDescription           String   @db.Text
+  ctaEyebrow               String
+  ctaTitle                 String
+  ctaPrimaryLabel          String
+  ctaSecondaryLabel        String
+  servicesPageEyebrow      String   @default("Services")
+  servicesPageTitle        String   @default("A complete digital growth ecosystem")
+  servicesPageDescription  String   @default("HK SoftTech supports businesses, students, freelancers, startups, and organizations with practical technology services designed around real requirements.") @db.Text
+  portfolioPageEyebrow     String   @default("Our work")
+  portfolioPageTitle       String   @default("Products and projects built to make an impact")
+  portfolioPageDescription String   @default("Explore selected digital products, client work, and experiments from HK SoftTech.") @db.Text
+  contactPageEyebrow       String   @default("Contact")
+  contactPageTitle         String   @default("Tell us about your project")
+  contactPageDescription   String   @default("Tell us what you are building, improving, or planning so we can guide the right next step.") @db.Text
+  updatedAt                DateTime @updatedAt
 }

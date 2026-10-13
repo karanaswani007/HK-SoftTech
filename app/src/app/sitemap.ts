@@ -1,29 +1,25 @@
 import type { MetadataRoute } from "next";
 
 import { siteConfig } from "@/data/site";
+import { getCmsServices } from "@/lib/cms";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = "force-dynamic";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const services = await getCmsServices();
   const routes = [
     "/",
     "/about",
     "/services",
-    "/web-development",
-    "/ai-solutions",
-    "/software-development",
-    "/digital-presence",
-    "/career-services",
-    "/training",
-    "/corporate-training",
-    "/consulting",
-    "/maintenance",
-    "/design",
     "/contact",
     "/faq",
+    "/portfolio",
     "/privacy-policy",
     "/terms",
+    ...services.map((service) => service.slug === "design-services" ? "/design" : `/${service.slug}`),
   ];
 
-  return routes.map((route) => ({
+  return [...new Set(routes)].map((route) => ({
     url: `${siteConfig.url}${route}`,
     lastModified: new Date(),
   }));

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BriefcaseBusiness, Camera } from "lucide-react";
+import { Link as LinkIcon } from "lucide-react";
 
 import { footerLinks } from "@/data/navigation";
 import { LogoMark } from "@/components/ui/LogoMark";
@@ -47,28 +47,19 @@ export function Footer({ settings, services }: { settings: CmsSettings; services
           <div>
             <h3 className="text-base font-bold uppercase tracking-[0.18em] text-white/70">Social</h3>
             <div className="mt-4 flex gap-3">
-              {settings.linkedin ? (
+              {settings.socials.map((social) => (
                 <a
-                  href={settings.linkedin}
+                  key={social.label}
+                  href={social.url}
                   target="_blank"
                   rel="noreferrer"
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-slate-100 transition hover:bg-white/10"
-                  aria-label="LinkedIn"
+                  aria-label={social.label}
+                  title={social.label}
                 >
-                  <BriefcaseBusiness size={18} />
+                  <LinkIcon size={18} />
                 </a>
-              ) : null}
-              {settings.instagram ? (
-                <a
-                  href={settings.instagram}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-slate-100 transition hover:bg-white/10"
-                  aria-label="Instagram"
-                >
-                  <Camera size={18} />
-                </a>
-              ) : null}
+              ))}
             </div>
             <ul className="mt-6 space-y-3 text-sm text-slate-100">
               {footerLinks.legal.map((item) => (

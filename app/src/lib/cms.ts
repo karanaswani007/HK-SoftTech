@@ -4,15 +4,20 @@ import { z } from "zod";
 import { faqs } from "@/data/faqs";
 import { serviceCategories, servicePages } from "@/data/services";
 import { siteConfig } from "@/data/site";
+import { maxPortfolioImageDataLength } from "@/lib/cms-constants";
 import { prisma } from "@/lib/db";
+
+const cmsSocialLinkSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  url: z.string().trim().url().refine((value) => /^https?:\/\//i.test(value)),
+});
 
 export const cmsSettingsSchema = z.object({
   tagline: z.string().trim().min(1).max(300),
   email: z.email(),
   phone: z.string().trim().min(3).max(80),
   location: z.string().trim().min(1).max(200),
-  linkedin: z.string().trim().refine((value) => !value || /^https?:\/\//i.test(value)),
-  instagram: z.string().trim().refine((value) => !value || /^https?:\/\//i.test(value)),
+  socials: z.array(cmsSocialLinkSchema).max(20),
   heroBadge: z.string().trim().min(1).max(160),
   heroTitlePrefix: z.string().trim().min(1).max(120),
   heroTitleHighlight: z.string().trim().min(1).max(120),
@@ -32,6 +37,15 @@ export const cmsSettingsSchema = z.object({
   ctaTitle: z.string().trim().min(1).max(200),
   ctaPrimaryLabel: z.string().trim().min(1).max(100),
   ctaSecondaryLabel: z.string().trim().min(1).max(100),
+  servicesPageEyebrow: z.string().trim().min(1).max(100),
+  servicesPageTitle: z.string().trim().min(1).max(200),
+  servicesPageDescription: z.string().trim().min(1).max(2000),
+  portfolioPageEyebrow: z.string().trim().min(1).max(100),
+  portfolioPageTitle: z.string().trim().min(1).max(200),
+  portfolioPageDescription: z.string().trim().min(1).max(2000),
+  contactPageEyebrow: z.string().trim().min(1).max(100),
+  contactPageTitle: z.string().trim().min(1).max(200),
+  contactPageDescription: z.string().trim().min(1).max(2000),
 });
 
 const cmsServiceSchema = z.object({
@@ -47,7 +61,11 @@ const cmsServiceSchema = z.object({
 
 const optionalHttpUrlSchema = z.union([
   z.literal(""),
-  z.url().refine((value) => value.startsWith("http://") || value.startsWith("https://")),
+  z.url().refine((value) => /^https?:\/\//i.test(value)),
+]);
+const optionalImageSchema = z.union([
+  optionalHttpUrlSchema,
+  z.string().max(2_796_300).regex(/^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/]+=*$/),
 ]);
 
 const cmsProjectSchema = z.object({
@@ -55,10 +73,9 @@ const cmsProjectSchema = z.object({
   title: z.string().trim().min(1).max(160),
   description: z.string().trim().min(1).max(3000),
   category: z.string().trim().min(1).max(100),
-  type: z.enum(["PROJECT", "PRODUCT"]),
-  imageUrl: optionalHttpUrlSchema,
+  serviceSlug: z.string().trim().min(1).max(100),
+  imageUrl: optionalImageSchema,
   projectUrl: optionalHttpUrlSchema,
-  sourceUrl: optionalHttpUrlSchema,
   featured: z.boolean(),
   published: z.boolean(),
 });
@@ -78,6 +95,22 @@ export const adminContentSchema = z
       .max(100),
   })
   .superRefine(({ services, projects }, context) => {
+    const builtInServiceSlugs = new Set(serviceCategories.map((service) => service.slug));
+    const reservedPageSlugs = new Set([
+      "about",
+      "admin",
+      "api",
+      "contact",
+      "design",
+      "faq",
+      "portfolio",
+      "privacy-policy",
+      "robots",
+      "services",
+      "sitemap",
+      "terms",
+    ]);
+
     if (new Set(services.map((service) => service.slug)).size !== services.length) {
       context.addIssue({
         code: "custom",
@@ -86,11 +119,43 @@ export const adminContentSchema = z
       });
     }
 
+    services.forEach((service, index) => {
+      if (reservedPageSlugs.has(service.slug) && !builtInServiceSlugs.has(service.slug)) {
+        context.addIssue({
+          code: "custom",
+          message: "This service slug is already used by a website page.",
+          path: ["services", index, "slug"],
+        });
+      }
+    });
+
     const projectIds = projects.flatMap((project) => project.id ? [project.id] : []);
     if (new Set(projectIds).size !== projectIds.length) {
       context.addIssue({
         code: "custom",
         message: "Portfolio item IDs must be unique.",
+        path: ["projects"],
+      });
+    }
+
+    projects.forEach((project, index) => {
+      if (!services.some((service) => service.slug === project.serviceSlug)) {
+        context.addIssue({
+          code: "custom",
+          message: "Select an existing service for each portfolio item.",
+          path: ["projects", index, "serviceSlug"],
+        });
+      }
+    });
+
+    const totalImageDataLength = projects.reduce(
+      (total, project) => total + (project.imageUrl.startsWith("data:image/") ? project.imageUrl.length : 0),
+      0,
+    );
+    if (totalImageDataLength > maxPortfolioImageDataLength) {
+      context.addIssue({
+        code: "custom",
+        message: "Portfolio image uploads must total no more than about 2.5 MB.",
         path: ["projects"],
       });
     }
@@ -107,8 +172,10 @@ export const defaultCmsSettings: CmsSettings = {
   email: siteConfig.email,
   phone: siteConfig.phone,
   location: siteConfig.location,
-  linkedin: siteConfig.social.linkedin,
-  instagram: siteConfig.social.instagram,
+  socials: [
+    { label: "LinkedIn", url: siteConfig.social.linkedin },
+    { label: "Instagram", url: siteConfig.social.instagram },
+  ],
   heroBadge: "Technology partner for growth",
   heroTitlePrefix: "Build Smarter.",
   heroTitleHighlight: "Grow Faster.",
@@ -132,6 +199,18 @@ export const defaultCmsSettings: CmsSettings = {
   ctaTitle: "Let's build your next digital milestone.",
   ctaPrimaryLabel: "Contact HK SoftTech",
   ctaSecondaryLabel: "Explore Services",
+  servicesPageEyebrow: "Services",
+  servicesPageTitle: "A complete digital growth ecosystem",
+  servicesPageDescription:
+    "HK SoftTech supports businesses, students, freelancers, startups, and organizations with practical technology services designed around real requirements.",
+  portfolioPageEyebrow: "Our work",
+  portfolioPageTitle: "Products and projects built to make an impact",
+  portfolioPageDescription:
+    "Explore selected digital products, client work, and experiments from HK SoftTech.",
+  contactPageEyebrow: "Contact",
+  contactPageTitle: "Tell us about your project",
+  contactPageDescription:
+    "Tell us what you are building, improving, or planning so we can guide the right next step.",
 };
 
 export const defaultServices: CmsService[] = serviceCategories.map((service) => {
@@ -165,8 +244,7 @@ export const getCmsSettings = cache(async (): Promise<CmsSettings> => {
     email: content.email,
     phone: content.phone,
     location: content.location,
-    linkedin: content.linkedin,
-    instagram: content.instagram,
+    socials: cmsSocialLinksFromContent(content),
     heroBadge: content.heroBadge,
     heroTitlePrefix: content.heroTitlePrefix,
     heroTitleHighlight: content.heroTitleHighlight,
@@ -186,8 +264,33 @@ export const getCmsSettings = cache(async (): Promise<CmsSettings> => {
     ctaTitle: content.ctaTitle,
     ctaPrimaryLabel: content.ctaPrimaryLabel,
     ctaSecondaryLabel: content.ctaSecondaryLabel,
+    servicesPageEyebrow: content.servicesPageEyebrow,
+    servicesPageTitle: content.servicesPageTitle,
+    servicesPageDescription: content.servicesPageDescription,
+    portfolioPageEyebrow: content.portfolioPageEyebrow,
+    portfolioPageTitle: content.portfolioPageTitle,
+    portfolioPageDescription: content.portfolioPageDescription,
+    contactPageEyebrow: content.contactPageEyebrow,
+    contactPageTitle: content.contactPageTitle,
+    contactPageDescription: content.contactPageDescription,
   });
 });
+
+function cmsSocialLinksFromContent(content: {
+  socialLinks: unknown;
+  linkedin: string;
+  instagram: string;
+}) {
+  const parsed = z.array(cmsSocialLinkSchema).safeParse(content.socialLinks);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  return [
+    content.linkedin ? { label: "LinkedIn", url: content.linkedin } : null,
+    content.instagram ? { label: "Instagram", url: content.instagram } : null,
+  ].filter((link): link is { label: string; url: string } => link !== null);
+}
 
 export const getCmsServices = cache(async (): Promise<CmsService[]> => {
   if (!process.env.DATABASE_URL) {
@@ -195,23 +298,22 @@ export const getCmsServices = cache(async (): Promise<CmsService[]> => {
   }
 
   const savedServices = await prisma.service.findMany({ orderBy: { sortOrder: "asc" } });
-  const savedBySlug = new Map(savedServices.map((service) => [service.slug, service]));
+  if (savedServices.length === 0) {
+    return defaultServices;
+  }
+  const fallbacksBySlug = new Map(defaultServices.map((service) => [service.slug, service]));
 
-  return defaultServices.map((fallback) => {
-    const saved = savedBySlug.get(fallback.slug);
-    if (!saved) {
-      return fallback;
-    }
-
+  return savedServices.map((saved) => {
+    const fallback = fallbacksBySlug.get(saved.slug);
     return {
       slug: saved.slug,
       title: saved.title,
-      short: saved.shortDescription ?? fallback.short,
-      description: saved.pageIntroduction ?? saved.description ?? fallback.description,
-      category: saved.category ?? fallback.category,
-      keyServices: saved.keyServices ? z.array(z.string()).parse(saved.keyServices) : fallback.keyServices,
-      pagePoints: saved.pagePoints ? z.array(z.string()).parse(saved.pagePoints) : fallback.pagePoints,
-      pageCta: saved.pageCta ?? fallback.pageCta,
+      short: saved.shortDescription ?? fallback?.short ?? "",
+      description: saved.pageIntroduction ?? saved.description ?? fallback?.description ?? "",
+      category: saved.category ?? fallback?.category ?? "Services",
+      keyServices: saved.keyServices ? z.array(z.string()).parse(saved.keyServices) : fallback?.keyServices ?? [],
+      pagePoints: saved.pagePoints ? z.array(z.string()).parse(saved.pagePoints) : fallback?.pagePoints ?? [],
+      pageCta: saved.pageCta ?? fallback?.pageCta ?? "Contact us",
     };
   });
 });
@@ -238,23 +340,34 @@ export const getPortfolioProjects = cache(async (publishedOnly = true): Promise<
     return [];
   }
 
-  const projects = await prisma.project.findMany({
-    where: publishedOnly ? { published: true } : undefined,
-    orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
-  });
+  const [projects, services] = await Promise.all([
+    prisma.project.findMany({
+      where: publishedOnly ? { published: true } : undefined,
+      orderBy: [{ featured: "desc" }, { sortOrder: "asc" }, { createdAt: "desc" }],
+    }),
+    getCmsServices(),
+  ]);
+  const serviceSlugs = new Set(services.map((service) => service.slug));
+  const serviceByTitle = new Map(services.map((service) => [service.title.toLowerCase(), service.slug]));
+  const servicesBySlug = new Map(services.map((service) => [service.slug, service]));
 
-  return projects.map((project) => ({
-    id: project.id,
-    title: project.title,
-    description: project.description ?? "",
-    category: project.category ?? "Uncategorized",
-    type: project.type,
-    imageUrl: project.imageUrl ?? "",
-    projectUrl: project.projectUrl ?? "",
-    sourceUrl: project.sourceUrl ?? "",
-    featured: project.featured,
-    published: project.published,
-  }));
+  return projects.map((project) => {
+    const serviceSlug = project.category && serviceSlugs.has(project.category)
+      ? project.category
+      : serviceByTitle.get(project.category?.toLowerCase() ?? "") ?? services[0]?.slug ?? "";
+
+    return {
+      id: project.id,
+      title: project.title,
+      description: project.description ?? "",
+      category: servicesBySlug.get(serviceSlug)?.title ?? project.category ?? "Uncategorized",
+      serviceSlug,
+      imageUrl: project.imageUrl ?? "",
+      projectUrl: project.projectUrl ?? "",
+      featured: project.featured,
+      published: project.published,
+    };
+  });
 });
 
 export async function getCmsService(slug: string): Promise<CmsService | undefined> {
@@ -273,66 +386,31 @@ export async function getAdminContent(): Promise<AdminContent> {
 }
 
 export async function saveAdminContent(content: AdminContent) {
+  const { socials, ...settings } = content.settings;
+  const legacySocial = (label: string) =>
+    socials.find((social) => social.label.toLowerCase() === label.toLowerCase())?.url ?? "";
+
   await prisma.$transaction(async (transaction) => {
     await transaction.siteContent.upsert({
       where: { id: "default" },
       create: {
         id: "default",
-        tagline: content.settings.tagline,
-        email: content.settings.email,
-        phone: content.settings.phone,
-        location: content.settings.location,
-        linkedin: content.settings.linkedin,
-        instagram: content.settings.instagram,
-        heroBadge: content.settings.heroBadge,
-        heroTitlePrefix: content.settings.heroTitlePrefix,
-        heroTitleHighlight: content.settings.heroTitleHighlight,
-        heroTitleSuffix: content.settings.heroTitleSuffix,
-        heroDescription: content.settings.heroDescription,
-        heroPrimaryCta: content.settings.heroPrimaryCta,
-        heroSecondaryCta: content.settings.heroSecondaryCta,
-        companyHeading: content.settings.companyHeading,
-        companyDescription: content.settings.companyDescription,
-        servicesEyebrow: content.settings.servicesEyebrow,
-        servicesTitle: content.settings.servicesTitle,
-        servicesDescription: content.settings.servicesDescription,
-        faqEyebrow: content.settings.faqEyebrow,
-        faqTitle: content.settings.faqTitle,
-        faqDescription: content.settings.faqDescription,
-        ctaEyebrow: content.settings.ctaEyebrow,
-        ctaTitle: content.settings.ctaTitle,
-        ctaPrimaryLabel: content.settings.ctaPrimaryLabel,
-        ctaSecondaryLabel: content.settings.ctaSecondaryLabel,
+        ...settings,
+        socialLinks: socials,
+        linkedin: legacySocial("LinkedIn"),
+        instagram: legacySocial("Instagram"),
       },
       update: {
-        tagline: content.settings.tagline,
-        email: content.settings.email,
-        phone: content.settings.phone,
-        location: content.settings.location,
-        linkedin: content.settings.linkedin,
-        instagram: content.settings.instagram,
-        heroBadge: content.settings.heroBadge,
-        heroTitlePrefix: content.settings.heroTitlePrefix,
-        heroTitleHighlight: content.settings.heroTitleHighlight,
-        heroTitleSuffix: content.settings.heroTitleSuffix,
-        heroDescription: content.settings.heroDescription,
-        heroPrimaryCta: content.settings.heroPrimaryCta,
-        heroSecondaryCta: content.settings.heroSecondaryCta,
-        companyHeading: content.settings.companyHeading,
-        companyDescription: content.settings.companyDescription,
-        servicesEyebrow: content.settings.servicesEyebrow,
-        servicesTitle: content.settings.servicesTitle,
-        servicesDescription: content.settings.servicesDescription,
-        faqEyebrow: content.settings.faqEyebrow,
-        faqTitle: content.settings.faqTitle,
-        faqDescription: content.settings.faqDescription,
-        ctaEyebrow: content.settings.ctaEyebrow,
-        ctaTitle: content.settings.ctaTitle,
-        ctaPrimaryLabel: content.settings.ctaPrimaryLabel,
-        ctaSecondaryLabel: content.settings.ctaSecondaryLabel,
+        ...settings,
+        socialLinks: socials,
+        linkedin: legacySocial("LinkedIn"),
+        instagram: legacySocial("Instagram"),
       },
     });
 
+    await transaction.service.deleteMany({
+      where: { slug: { notIn: content.services.map((service) => service.slug) } },
+    });
     for (const [sortOrder, service] of content.services.entries()) {
       await transaction.service.upsert({
         where: { slug: service.slug },
@@ -368,15 +446,20 @@ export async function saveAdminContent(content: AdminContent) {
     });
 
     for (const [sortOrder, project] of content.projects.entries()) {
-      const { id, ...projectData } = project;
+      const { id, serviceSlug, ...projectData } = project;
+      const service = content.services.find((item) => item.slug === serviceSlug);
+      if (!service) {
+        throw new Error(`Portfolio item "${project.title}" references an unknown service.`);
+      }
+      const savedProjectData = { ...projectData, category: serviceSlug, sortOrder };
       if (id) {
         await transaction.project.update({
           where: { id },
-          data: { ...projectData, sortOrder },
+          data: savedProjectData,
         });
       } else {
         await transaction.project.create({
-          data: { ...projectData, sortOrder },
+          data: { ...savedProjectData, type: "PROJECT" },
         });
       }
     }

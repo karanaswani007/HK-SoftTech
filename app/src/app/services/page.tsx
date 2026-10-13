@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ServiceCard } from "@/components/services/ServiceCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
-import { getCmsServices } from "@/lib/cms";
+import { getCmsServices, getCmsSettings } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -10,14 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function ServicesPage() {
-  const services = await getCmsServices();
+  const [settings, services] = await Promise.all([getCmsSettings(), getCmsServices()]);
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading
-        eyebrow="Services"
-        title="A complete digital growth ecosystem"
-        description="HK SoftTech supports businesses, students, freelancers, startups, and organizations with practical technology services designed around real requirements."
+        eyebrow={settings.servicesPageEyebrow}
+        title={settings.servicesPageTitle}
+        description={settings.servicesPageDescription}
       />
 
       <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-3">

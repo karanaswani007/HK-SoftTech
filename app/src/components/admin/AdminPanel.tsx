@@ -3,21 +3,35 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import type { AdminContent, CmsSettings } from "@/lib/cms";
+import { maxPortfolioImageDataLength } from "@/lib/cms-constants";
+import type { AdminContent, CmsService, CmsSettings } from "@/lib/cms";
 
-const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: string; multiline?: boolean }[] }[] = [
+type AdminPage = "home" | "services" | "portfolio" | "faqs" | "contact";
+
+const adminPages: { id: AdminPage; label: string; description: string }[] = [
+  { id: "home", label: "Home page", description: "Homepage sections, calls to action, and featured content." },
+  { id: "services", label: "Services", description: "Services overview page and individual service pages." },
+  { id: "portfolio", label: "Portfolio", description: "Portfolio page introduction and project cards." },
+  { id: "faqs", label: "FAQs", description: "FAQ page introduction and questions shown across the site." },
+  { id: "contact", label: "Contact & social", description: "Contact details and social profile links." },
+];
+
+const settingGroups: { page: AdminPage; title: string; fields: { key: Exclude<keyof CmsSettings, "socials">; label: string; multiline?: boolean }[] }[] = [
   {
-    title: "Contact & social",
+    page: "contact",
+    title: "Contact details",
     fields: [
       { key: "tagline", label: "Company tagline" },
       { key: "email", label: "Contact email" },
       { key: "phone", label: "Phone" },
       { key: "location", label: "Location" },
-      { key: "linkedin", label: "LinkedIn URL" },
-      { key: "instagram", label: "Instagram URL" },
+      { key: "contactPageEyebrow", label: "Contact page eyebrow" },
+      { key: "contactPageTitle", label: "Contact page heading" },
+      { key: "contactPageDescription", label: "Contact page description", multiline: true },
     ],
   },
   {
+    page: "home",
     title: "Home page — hero",
     fields: [
       { key: "heroBadge", label: "Badge" },
@@ -30,6 +44,7 @@ const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: s
     ],
   },
   {
+    page: "home",
     title: "Home page — company",
     fields: [
       { key: "companyHeading", label: "Heading" },
@@ -37,6 +52,7 @@ const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: s
     ],
   },
   {
+    page: "home",
     title: "Home page — services",
     fields: [
       { key: "servicesEyebrow", label: "Eyebrow" },
@@ -45,6 +61,7 @@ const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: s
     ],
   },
   {
+    page: "faqs",
     title: "Home page — FAQs",
     fields: [
       { key: "faqEyebrow", label: "Eyebrow" },
@@ -53,6 +70,7 @@ const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: s
     ],
   },
   {
+    page: "home",
     title: "Home page — call to action",
     fields: [
       { key: "ctaEyebrow", label: "Eyebrow" },
@@ -61,11 +79,39 @@ const settingGroups: { title: string; fields: { key: keyof CmsSettings; label: s
       { key: "ctaSecondaryLabel", label: "Secondary button" },
     ],
   },
+  {
+    page: "services",
+    title: "Services page introduction",
+    fields: [
+      { key: "servicesPageEyebrow", label: "Eyebrow" },
+      { key: "servicesPageTitle", label: "Heading" },
+      { key: "servicesPageDescription", label: "Description", multiline: true },
+    ],
+  },
+  {
+    page: "portfolio",
+    title: "Portfolio page introduction",
+    fields: [
+      { key: "portfolioPageEyebrow", label: "Eyebrow" },
+      { key: "portfolioPageTitle", label: "Heading" },
+      { key: "portfolioPageDescription", label: "Description", multiline: true },
+    ],
+  },
+  {
+    page: "faqs",
+    title: "FAQ page introduction",
+    fields: [
+      { key: "faqEyebrow", label: "Eyebrow" },
+      { key: "faqTitle", label: "Heading" },
+      { key: "faqDescription", label: "Description", multiline: true },
+    ],
+  },
 ];
 
 const inputClass =
   "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15";
 const serviceLabels = [
+  ["slug", "Page URL slug"],
   ["title", "Service name"],
   ["category", "Category"],
   ["short", "Card description"],
@@ -73,15 +119,61 @@ const serviceLabels = [
   ["pageCta", "Service page button"],
 ] as const;
 
+const emptyService: CmsService = {
+  slug: "",
+  title: "",
+  short: "",
+  description: "",
+  category: "",
+  keyServices: [],
+  pagePoints: [],
+  pageCta: "Contact us",
+};
+
+const maxImageBytes = 2 * 1024 * 1024;
+const acceptedImageTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+function readImageFile(file: File): Promise<string> {
+  if (!acceptedImageTypes.includes(file.type)) {
+    return Promise.reject(new Error("Choose a JPG, PNG, WebP, or GIF image."));
+  }
+  if (file.size > maxImageBytes) {
+    return Promise.reject(new Error("Each image must be 2 MB or smaller."));
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Unable to read the selected image."));
+        return;
+      }
+      resolve(reader.result);
+    };
+    reader.onerror = () => reject(new Error("Unable to read the selected image."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function AdminPanel({ initialContent }: { initialContent: AdminContent }) {
   const [content, setContent] = useState(initialContent);
+  const [activePage, setActivePage] = useState<AdminPage>("home");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [loggedOut, setLoggedOut] = useState(false);
 
-  function updateSettings(key: keyof CmsSettings, value: string) {
+  function updateSettings(key: Exclude<keyof CmsSettings, "socials">, value: string) {
     setContent((current) => ({ ...current, settings: { ...current.settings, [key]: value } }));
+  }
+
+  function updateService(index: number, changes: Partial<CmsService>) {
+    setContent((current) => ({
+      ...current,
+      services: current.services.map((service, itemIndex) =>
+        itemIndex === index ? { ...service, ...changes } : service,
+      ),
+    }));
   }
 
   async function saveContent(event: React.FormEvent<HTMLFormElement>) {
@@ -145,7 +237,27 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
       {message ? <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p> : null}
       {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
 
-      {settingGroups.map((group) => (
+      <nav aria-label="Content categories" className="grid gap-2 rounded-2xl border border-slate-200 bg-white p-2 sm:grid-cols-2 lg:grid-cols-5">
+        {adminPages.map((page) => (
+          <button
+            key={page.id}
+            type="button"
+            aria-pressed={activePage === page.id}
+            onClick={() => setActivePage(page.id)}
+            className={`rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+              activePage === page.id ? "bg-brand-blue text-white" : "text-slate-600 hover:bg-brand-light hover:text-brand-blue"
+            }`}
+          >
+            {page.label}
+          </button>
+        ))}
+      </nav>
+      <div className="rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4">
+        <h2 className="font-bold text-brand-navy">{adminPages.find((page) => page.id === activePage)?.label}</h2>
+        <p className="mt-1 text-sm text-slate-600">{adminPages.find((page) => page.id === activePage)?.description}</p>
+      </div>
+
+      {settingGroups.filter((group) => group.page === activePage).map((group) => (
         <section key={group.title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <h2 className="text-lg font-bold text-brand-navy">{group.title}</h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -163,64 +275,113 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
         </section>
       ))}
 
-      <section className="space-y-4">
+      {activePage === "contact" ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-brand-navy">Social profiles</h2>
+              <p className="mt-1 text-sm text-slate-600">Add as many social links as needed; remove any you no longer use.</p>
+            </div>
+            <button
+              type="button"
+              disabled={content.settings.socials.length >= 20}
+              onClick={() => setContent((current) => ({
+                ...current,
+                settings: { ...current.settings, socials: [...current.settings.socials, { label: "", url: "" }] },
+              }))}
+              className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Add social
+            </button>
+          </div>
+          <div className="mt-5 space-y-3">
+            {content.settings.socials.map((social, index) => (
+              <div key={index} className="grid gap-3 sm:grid-cols-[0.7fr_1.3fr_auto]">
+                <label className="block text-sm font-medium text-slate-700">
+                  Platform name
+                  <input className={inputClass} value={social.label} onChange={(event) => {
+                    const socials = [...content.settings.socials];
+                    socials[index] = { ...social, label: event.target.value };
+                    setContent({ ...content, settings: { ...content.settings, socials } });
+                  }} />
+                </label>
+                <label className="block text-sm font-medium text-slate-700">
+                  Profile URL
+                  <input type="url" className={inputClass} value={social.url} onChange={(event) => {
+                    const socials = [...content.settings.socials];
+                    socials[index] = { ...social, url: event.target.value };
+                    setContent({ ...content, settings: { ...content.settings, socials } });
+                  }} />
+                </label>
+                <button type="button" onClick={() => setContent({
+                  ...content,
+                  settings: { ...content.settings, socials: content.settings.socials.filter((_, itemIndex) => itemIndex !== index) },
+                })} className="self-end rounded-lg px-3 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50">
+                  Remove
+                </button>
+              </div>
+            ))}
+            {content.settings.socials.length === 0 ? <p className="text-sm text-slate-500">No social profiles added.</p> : null}
+          </div>
+        </section>
+      ) : null}
+
+      {activePage === "services" ? <section className="space-y-4">
         <div>
-          <h2 className="text-xl font-bold text-brand-navy">Services</h2>
-          <p className="mt-1 text-sm text-slate-600">Edit the existing service cards and detail pages. Website URLs stay the same.</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-brand-navy">Service pages</h2>
+              <p className="mt-1 text-sm text-slate-600">Add, edit, remove, or reorder service cards and their detail-page content.</p>
+            </div>
+            <button type="button" disabled={content.services.length >= 30} onClick={() => setContent((current) => ({ ...current, services: [...current.services, { ...emptyService }] }))} className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40">
+              Add service
+            </button>
+          </div>
         </div>
         {content.services.map((service, serviceIndex) => (
-          <details key={service.slug} className="group rounded-2xl border border-slate-200 bg-white shadow-sm" open={serviceIndex === 0}>
+          <details key={`${service.slug}-${serviceIndex}`} className="group rounded-2xl border border-slate-200 bg-white shadow-sm" open={serviceIndex === 0 || serviceIndex === content.services.length - 1}>
             <summary className="cursor-pointer list-none px-5 py-4 text-base font-semibold text-brand-navy marker:hidden">
-              {service.title}<span className="float-right text-slate-400 group-open:rotate-180">⌄</span>
+              {service.title || `New service ${serviceIndex + 1}`}<span className="float-right text-slate-400 group-open:rotate-180">⌄</span>
             </summary>
             <div className="grid gap-4 border-t border-slate-100 p-5 sm:grid-cols-2">
               {serviceLabels.map(([key, label]) => (
                 <label key={key} className={`block text-sm font-medium text-slate-700 ${key === "description" || key === "short" ? "sm:col-span-2" : ""}`}>
                   {label}
                   {key === "description" || key === "short" ? (
-                    <textarea className={inputClass} rows={key === "description" ? 3 : 2} value={service[key]} onChange={(event) => {
-                      const services = [...content.services];
-                      services[serviceIndex] = { ...service, [key]: event.target.value };
-                      setContent({ ...content, services });
-                    }} />
+                    <textarea className={inputClass} rows={key === "description" ? 3 : 2} value={service[key]} onChange={(event) => updateService(serviceIndex, { [key]: event.target.value })} />
                   ) : (
-                    <input className={inputClass} value={service[key]} onChange={(event) => {
-                      const services = [...content.services];
-                      services[serviceIndex] = { ...service, [key]: event.target.value };
-                      setContent({ ...content, services });
-                    }} />
+                    <input className={inputClass} value={service[key]} onChange={(event) => updateService(serviceIndex, { [key]: event.target.value })} />
                   )}
                 </label>
               ))}
               <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
                 Service card bullet points <span className="font-normal text-slate-500">(one per line)</span>
-                <textarea className={inputClass} rows={4} value={service.keyServices.join("\n")} onChange={(event) => {
-                  const services = [...content.services];
-                  services[serviceIndex] = { ...service, keyServices: event.target.value.split("\n").filter((item) => item.trim()) };
-                  setContent({ ...content, services });
-                }} />
+                <textarea className={inputClass} rows={4} value={service.keyServices.join("\n")} onChange={(event) => updateService(serviceIndex, { keyServices: event.target.value.split("\n").filter((item) => item.trim()) })} />
               </label>
               <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
                 Service page bullet points <span className="font-normal text-slate-500">(one per line)</span>
-                <textarea className={inputClass} rows={5} value={service.pagePoints.join("\n")} onChange={(event) => {
-                  const services = [...content.services];
-                  services[serviceIndex] = { ...service, pagePoints: event.target.value.split("\n").filter((item) => item.trim()) };
-                  setContent({ ...content, services });
-                }} />
+                <textarea className={inputClass} rows={5} value={service.pagePoints.join("\n")} onChange={(event) => updateService(serviceIndex, { pagePoints: event.target.value.split("\n").filter((item) => item.trim()) })} />
               </label>
+              <button type="button" disabled={content.services.length <= 1} onClick={() => setContent({
+                ...content,
+                services: content.services.filter((_, index) => index !== serviceIndex),
+              })} className="justify-self-start rounded-lg px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40">
+                Remove service
+              </button>
             </div>
           </details>
         ))}
-      </section>
+      </section> : null}
 
-      <section className="space-y-4">
+      {activePage === "portfolio" ? <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-brand-navy">Portfolio</h2>
+            <h2 className="text-xl font-bold text-brand-navy">Portfolio items</h2>
             <p className="mt-1 text-sm text-slate-600">Showcase products and projects on the public portfolio page.</p>
           </div>
           <button
             type="button"
+            disabled={content.projects.length >= 100}
             onClick={() => setContent({
               ...content,
               projects: [
@@ -228,17 +389,16 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                 {
                   title: "",
                   description: "",
-                  category: "",
-                  type: "PROJECT",
+                  category: content.services[0]?.title ?? "",
+                  serviceSlug: content.services[0]?.slug ?? "",
                   imageUrl: "",
                   projectUrl: "",
-                  sourceUrl: "",
                   featured: false,
                   published: true,
                 },
               ],
             })}
-            className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light"
+            className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40"
           >
             Add project / product
           </button>
@@ -250,9 +410,13 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
         ) : null}
         {content.projects.map((project, projectIndex) => {
           const updateProject = (changes: Partial<typeof project>) => {
-            const projects = [...content.projects];
-            projects[projectIndex] = { ...project, ...changes };
-            setContent({ ...content, projects });
+            setContent((current) => {
+              const projects = [...current.projects];
+              const existingProject = projects[projectIndex];
+              if (!existingProject) return current;
+              projects[projectIndex] = { ...existingProject, ...changes };
+              return { ...current, projects };
+            });
           };
 
           return (
@@ -267,31 +431,72 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
                   <input className={inputClass} value={project.title} onChange={(event) => updateProject({ title: event.target.value })} />
                 </label>
                 <label className="block text-sm font-medium text-slate-700">
-                  Type
-                  <select className={inputClass} value={project.type} onChange={(event) => updateProject({ type: event.target.value as "PROJECT" | "PRODUCT" })}>
-                    <option value="PROJECT">Project</option>
-                    <option value="PRODUCT">Product</option>
+                  Related service
+                  <select
+                    required
+                    className={inputClass}
+                    value={project.serviceSlug}
+                    onChange={(event) => {
+                      const service = content.services.find((item) => item.slug === event.target.value);
+                      updateProject({ serviceSlug: event.target.value, category: service?.title ?? "" });
+                    }}
+                  >
+                    <option value="" disabled>Select a service</option>
+                    {content.services.map((service) => (
+                      <option key={service.slug} value={service.slug}>{service.title}</option>
+                    ))}
                   </select>
-                </label>
-                <label className="block text-sm font-medium text-slate-700">
-                  Category / technology
-                  <input className={inputClass} value={project.category} onChange={(event) => updateProject({ category: event.target.value })} />
                 </label>
                 <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
                   Description
                   <textarea className={inputClass} rows={3} value={project.description} onChange={(event) => updateProject({ description: event.target.value })} />
                 </label>
-                <label className="block text-sm font-medium text-slate-700 sm:col-span-2">
-                  Image URL <span className="font-normal text-slate-500">(optional, use a public HTTPS image URL)</span>
-                  <input type="url" className={inputClass} value={project.imageUrl} onChange={(event) => updateProject({ imageUrl: event.target.value })} />
-                </label>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Project image <span className="font-normal text-slate-500">(JPG, PNG, WebP or GIF; up to 2 MB)</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className={`${inputClass} file:mr-3 file:rounded-lg file:border-0 file:bg-brand-light file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand-blue`}
+                      onChange={async (event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        setError("");
+                        try {
+                          const imageUrl = await readImageFile(file);
+                          const currentImageLength = project.imageUrl.startsWith("data:image/") ? project.imageUrl.length : 0;
+                          const totalImageLength = content.projects.reduce(
+                            (total, item) => total + (item.imageUrl.startsWith("data:image/") ? item.imageUrl.length : 0),
+                            0,
+                          );
+                          if (totalImageLength - currentImageLength + imageUrl.length > maxPortfolioImageDataLength) {
+                            throw new Error("All portfolio uploads together must total no more than about 2.5 MB.");
+                          }
+                          updateProject({ imageUrl });
+                        } catch (imageError) {
+                          setError(imageError instanceof Error ? imageError.message : "Unable to read the selected image.");
+                        }
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {project.imageUrl ? (
+                    <div className="mt-3 flex items-center gap-4">
+                      <div
+                        role="img"
+                        aria-label={`${project.title || "Portfolio item"} image preview`}
+                        className="h-24 w-40 rounded-xl border border-slate-200 bg-cover bg-center"
+                        style={{ backgroundImage: `url("${project.imageUrl}")` }}
+                      />
+                      <button type="button" onClick={() => updateProject({ imageUrl: "" })} className="rounded-lg px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                        Remove image
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <label className="block text-sm font-medium text-slate-700">
                   Live product / demo URL
                   <input type="url" className={inputClass} value={project.projectUrl} onChange={(event) => updateProject({ projectUrl: event.target.value })} />
-                </label>
-                <label className="block text-sm font-medium text-slate-700">
-                  Source code URL
-                  <input type="url" className={inputClass} value={project.sourceUrl} onChange={(event) => updateProject({ sourceUrl: event.target.value })} />
                 </label>
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
                   <input type="checkbox" checked={project.featured} onChange={(event) => updateProject({ featured: event.target.checked })} className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue" />
@@ -318,15 +523,15 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
             </details>
           );
         })}
-      </section>
+      </section> : null}
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+      {activePage === "faqs" ? <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-brand-navy">Frequently asked questions</h2>
             <p className="mt-1 text-sm text-slate-600">Add, edit, remove, or reorder questions.</p>
           </div>
-          <button type="button" onClick={() => setContent({ ...content, faqs: [...content.faqs, { question: "", answer: "" }] })} className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light">Add FAQ</button>
+          <button type="button" disabled={content.faqs.length >= 100} onClick={() => setContent({ ...content, faqs: [...content.faqs, { question: "", answer: "" }] })} className="rounded-full border border-brand-blue px-4 py-2 text-sm font-semibold text-brand-blue hover:bg-brand-light disabled:cursor-not-allowed disabled:opacity-40">Add FAQ</button>
         </div>
         <div className="mt-5 space-y-4">
           {content.faqs.map((faq, faqIndex) => (
@@ -365,7 +570,7 @@ export function AdminPanel({ initialContent }: { initialContent: AdminContent })
             </div>
           ))}
         </div>
-      </section>
+      </section> : null}
     </form>
   );
 }
