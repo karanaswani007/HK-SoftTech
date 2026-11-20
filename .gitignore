@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.output/
+.vercel/
+.nitro/
+coverage/
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Local tooling and generated files; keep the non-secret auth flag in the repo.
+.grok/*
+!.grok/app-env.json
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.tsbuildinfo
+
+# Operating systems and editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "HK SoftTech | Software, AI and Digital Solutions",
+      "hasCanvas": false,
+      "bodyTextLen": 5095,
+      "bodyTextHash": "71b40260d0cd8adfbad940a17e3b4311ea24c4fdbd0e9a7f8bdb1eb45236824e",
+      "bodyTextPrefix": "Skip to content Home About Services Solutions Portfolio Training",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/prod-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "HK SoftTech | Software, AI and Digital Solutions",
+      "hasCanvas": false,
+      "bodyTextLen": 5023,
+      "bodyTextHash": "3390c207c462f76964f83ede7852cc413558689cccad690869ad5ce662c505a9",
+      "bodyTextPrefix": "Skip to content Start a Project TECHNOLOGY PARTNER FOR GROWTH Bu",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/prod-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/prod-preview.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}
