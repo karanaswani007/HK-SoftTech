@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { BUDGETS, CONTACT_METHODS, CUSTOMER_TYPES, TIMELINES } from "@/lib/hk/labels";
+import type { PublicTeamMember } from "@/lib/hk/public-profile";
 import { clean, plain, plains } from "@/lib/hk/row";
 
 async function db() {
@@ -74,6 +75,58 @@ export const getShell = createServerFn({ method: "GET" }).handler(async () => {
         })),
     })),
   };
+});
+
+export const getPublicFounder = createServerFn({ method: "GET" }).handler(async () => {
+  const sql = await db();
+  const rows = plains(
+    await sql<Record<string, unknown>>`
+      select founder_name, founder_role, founder_bio, founder_image_url, founder_website_url,
+             founder_linkedin_url, founder_instagram_url, founder_github_url, founder_x_url
+      from site_settings where id = 1
+    `,
+  );
+  const row = rows[0] ?? {};
+  return {
+    name: String(row.founder_name ?? ""),
+    role: String(row.founder_role ?? ""),
+    bio: String(row.founder_bio ?? ""),
+    image_url: String(row.founder_image_url ?? ""),
+    website_url: String(row.founder_website_url ?? ""),
+    linkedin_url: String(row.founder_linkedin_url ?? ""),
+    instagram_url: String(row.founder_instagram_url ?? ""),
+    github_url: String(row.founder_github_url ?? ""),
+    x_url: String(row.founder_x_url ?? ""),
+  };
+});
+
+export const getPublicTeam = createServerFn({ method: "GET" }).handler(async () => {
+  const sql = await db();
+  const rows = plains(
+    await sql<Record<string, unknown>>`
+      select id, name, role, bio, image_url, website_url, linkedin_url, instagram_url,
+             github_url, x_url, sort_order, published
+      from public_team_members
+      where published = true
+      order by sort_order, id
+    `,
+  );
+  return rows.map(
+    (row): PublicTeamMember => ({
+      id: Number(row.id),
+      name: String(row.name ?? ""),
+      role: String(row.role ?? ""),
+      bio: String(row.bio ?? ""),
+      image_url: String(row.image_url ?? ""),
+      website_url: String(row.website_url ?? ""),
+      linkedin_url: String(row.linkedin_url ?? ""),
+      instagram_url: String(row.instagram_url ?? ""),
+      github_url: String(row.github_url ?? ""),
+      x_url: String(row.x_url ?? ""),
+      sort_order: Number(row.sort_order ?? 0),
+      published: Boolean(row.published),
+    }),
+  );
 });
 
 export const getHome = createServerFn({ method: "GET" }).handler(async () => {

@@ -27,6 +27,7 @@ import { Route as AdminContentRouteImport } from './routes/admin/content'
 import { Route as AdminEnquiriesRouteImport } from './routes/admin/enquiries'
 import { Route as AdminInsightsRouteImport } from './routes/admin/insights'
 import { Route as AdminMediaRouteImport } from './routes/admin/media'
+import { Route as AdminPeopleRouteImport } from './routes/admin/people'
 import { Route as AdminPortfolioRouteImport } from './routes/admin/portfolio'
 import { Route as AdminProjectsRouteImport } from './routes/admin/projects'
 import { Route as AdminSeoRouteImport } from './routes/admin/seo'
@@ -132,6 +133,11 @@ const AdminMediaRoute = AdminMediaRouteImport.update({
   path: '/media',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminPeopleRoute = AdminPeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminPortfolioRoute = AdminPortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
@@ -225,6 +231,7 @@ export interface FileRoutesByFullPath {
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/media': typeof AdminMediaRoute
+  '/admin/people': typeof AdminPeopleRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/seo': typeof AdminSeoRoute
@@ -257,6 +264,7 @@ export interface FileRoutesByTo {
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/media': typeof AdminMediaRoute
+  '/admin/people': typeof AdminPeopleRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/seo': typeof AdminSeoRoute
@@ -293,6 +301,7 @@ export interface FileRoutesById {
   '/admin/enquiries': typeof AdminEnquiriesRoute
   '/admin/insights': typeof AdminInsightsRoute
   '/admin/media': typeof AdminMediaRoute
+  '/admin/people': typeof AdminPeopleRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/seo': typeof AdminSeoRoute
@@ -330,6 +339,7 @@ export interface FileRouteTypes {
     | '/admin/enquiries'
     | '/admin/insights'
     | '/admin/media'
+    | '/admin/people'
     | '/admin/portfolio'
     | '/admin/projects'
     | '/admin/seo'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/admin/enquiries'
     | '/admin/insights'
     | '/admin/media'
+    | '/admin/people'
     | '/admin/portfolio'
     | '/admin/projects'
     | '/admin/seo'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/admin/enquiries'
     | '/admin/insights'
     | '/admin/media'
+    | '/admin/people'
     | '/admin/portfolio'
     | '/admin/projects'
     | '/admin/seo'
@@ -553,6 +565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMediaRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/people': {
+      id: '/admin/people'
+      path: '/people'
+      fullPath: '/admin/people'
+      preLoaderRoute: typeof AdminPeopleRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/portfolio': {
       id: '/admin/portfolio'
       path: '/portfolio'
@@ -667,6 +686,7 @@ interface AdminRouteRouteChildren {
   AdminEnquiriesRoute: typeof AdminEnquiriesRoute
   AdminInsightsRoute: typeof AdminInsightsRoute
   AdminMediaRoute: typeof AdminMediaRoute
+  AdminPeopleRoute: typeof AdminPeopleRoute
   AdminPortfolioRoute: typeof AdminPortfolioRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminSeoRoute: typeof AdminSeoRoute
@@ -684,6 +704,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminEnquiriesRoute: AdminEnquiriesRoute,
   AdminInsightsRoute: AdminInsightsRoute,
   AdminMediaRoute: AdminMediaRoute,
+  AdminPeopleRoute: AdminPeopleRoute,
   AdminPortfolioRoute: AdminPortfolioRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminSeoRoute: AdminSeoRoute,

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Check, Notice, Panel, Skeleton, fieldClass, useConfirm, useLoader } from "@/components/admin/kit";
 import { useAccess } from "@/components/admin/frame";
+import { isPublicImageSource, type PublicTeamMemberInput } from "@/lib/hk/public-profile";
 import {
   addEnquiryNote,
   addMedia,
@@ -13,6 +14,7 @@ import {
   deletePost,
   deleteProgram,
   deleteProject,
+  deletePublicTeamMember,
   deleteService,
   deleteTestimonial,
   getDashboard,
@@ -25,6 +27,7 @@ import {
   listMedia,
   listPostsAdmin,
   listProjectsAdmin,
+  listPublicTeamAdmin,
   listServicesAdmin,
   listTeam,
   listTestimonialsAdmin,
@@ -35,6 +38,7 @@ import {
   savePost,
   saveProgram,
   saveProject,
+  savePublicTeamMember,
   saveService,
   saveSettings,
   saveTestimonial,
@@ -605,6 +609,14 @@ const COPY_FIELDS = [
   ["terms_body", "Terms"],
 ] as const;
 
+const FOUNDER_PROFILE_FIELDS = [
+  ["founder_website_url", "Website"],
+  ["founder_linkedin_url", "LinkedIn"],
+  ["founder_instagram_url", "Instagram"],
+  ["founder_github_url", "GitHub"],
+  ["founder_x_url", "X"],
+] as const;
+
 export function ContentPanel() {
   const load = useServerFn(listFaqsAdmin);
   const saveCopy = useServerFn(saveSettings);
@@ -627,6 +639,59 @@ export function ContentPanel() {
             </label>
           ))}
           <button type="button" className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent" onClick={() => run(() => saveCopy({ data: current }), reload)}>Save copy</button>
+        </div>
+      </Panel>
+      <Panel title="Founder profile">
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-sm">
+            Photo URL
+            <input
+              className={fieldClass}
+              type="url"
+              placeholder="https://…"
+              value={String(current.founder_image_url ?? "").startsWith("data:") ? "" : String(current.founder_image_url ?? "")}
+              onChange={(event) => setSettings({ ...current, founder_image_url: event.target.value })}
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            Or upload a photo (PNG, JPEG, WebP or GIF; under 900 KB)
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                if (file) readImage(file, (founder_image_url) => setSettings({ ...current, founder_image_url }));
+              }}
+            />
+          </label>
+          {String(current.founder_image_url ?? "").startsWith("data:") ? (
+            <p className="text-xs text-muted">An uploaded photo is ready. Upload another image to replace it.</p>
+          ) : null}
+          {isPublicImageSource(String(current.founder_image_url ?? "")) && current.founder_image_url ? (
+            <img
+              src={String(current.founder_image_url)}
+              alt="Founder profile preview"
+              className="size-28 rounded-2xl border border-line object-cover"
+            />
+          ) : null}
+          {current.founder_image_url ? (
+            <button type="button" className="w-fit text-sm font-medium text-accent" onClick={() => setSettings({ ...current, founder_image_url: "" })}>
+              Remove founder photo
+            </button>
+          ) : null}
+          {FOUNDER_PROFILE_FIELDS.map(([key, label]) => (
+            <label key={key} className="grid gap-1 text-sm">
+              {label} profile URL
+              <input
+                className={fieldClass}
+                type="url"
+                placeholder="https://…"
+                value={String(current[key] ?? "")}
+                onChange={(event) => setSettings({ ...current, [key]: event.target.value })}
+              />
+            </label>
+          ))}
+          <button type="button" className="w-fit rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent" onClick={() => run(() => saveCopy({ data: current }), reload)}>Save founder profile</button>
         </div>
       </Panel>
       <Panel title="FAQs" action={<button type="button" className="text-sm font-semibold text-accent" onClick={() => setFaq({ question: "", answer: "", sort_order: 100, published: true })}>Add</button>}>
@@ -679,6 +744,179 @@ export function MediaPanel() {
         </ul>
       )}
     </Panel>
+  );
+}
+
+function teamDraftFromRow(row: Record<string, unknown>): PublicTeamMemberInput {
+  return {
+    id: Number(row.id),
+    name: String(row.name ?? ""),
+    role: String(row.role ?? ""),
+    bio: String(row.bio ?? ""),
+    image_url: String(row.image_url ?? ""),
+    website_url: String(row.website_url ?? ""),
+    linkedin_url: String(row.linkedin_url ?? ""),
+    instagram_url: String(row.instagram_url ?? ""),
+    github_url: String(row.github_url ?? ""),
+    x_url: String(row.x_url ?? ""),
+    sort_order: Number(row.sort_order ?? 0),
+    published: Boolean(row.published),
+  };
+}
+
+function newTeamDraft(sort_order: number): PublicTeamMemberInput {
+  return {
+    name: "",
+    role: "",
+    bio: "",
+    image_url: "",
+    website_url: "",
+    linkedin_url: "",
+    instagram_url: "",
+    github_url: "",
+    x_url: "",
+    sort_order,
+    published: false,
+  };
+}
+
+const TEAM_PROFILE_LINKS = [
+  ["website_url", "Website"],
+  ["linkedin_url", "LinkedIn"],
+  ["instagram_url", "Instagram"],
+  ["github_url", "GitHub"],
+  ["x_url", "X"],
+] as const;
+
+export function PublicTeamPanel() {
+  const load = useServerFn(listPublicTeamAdmin);
+  const save = useServerFn(savePublicTeamMember);
+  const remove = useServerFn(deletePublicTeamMember);
+  const { data, error, loading, reload } = useLoader(() => load());
+  const { confirm, dialog } = useConfirm();
+  const [draft, setDraft] = useState<PublicTeamMemberInput | null>(null);
+  if (loading) return <Skeleton />;
+  if (error || !data) return <Notice>{error ?? "Unable to load public team profiles."}</Notice>;
+  const current = draft;
+  const photo = String(current?.image_url ?? "");
+  const photoUrl = photo.startsWith("data:") ? "" : photo;
+  const currentId = current?.id;
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+      {dialog}
+      <Panel title="Public team">
+        <p className="mb-4 text-sm leading-6 text-muted">
+          These profiles are separate from private Studio access. Only profiles marked Published appear on the public About page.
+        </p>
+        <button
+          type="button"
+          className="mb-4 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
+          onClick={() => setDraft(newTeamDraft(data.length * 10))}
+        >
+          Add team member
+        </button>
+        {data.length === 0 ? (
+          <p className="text-sm text-muted">No team profiles yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {data.map((person) => (
+              <li key={String(person.id)}>
+                <button
+                  type="button"
+                  className="flex min-h-14 w-full items-center justify-between gap-3 rounded-xl border border-line p-3 text-left hover:border-accent"
+                  onClick={() => setDraft(teamDraftFromRow(person))}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold">{String(person.name)}</span>
+                    <span className="block truncate text-xs text-muted">{String(person.role)}</span>
+                  </span>
+                  <span className={`shrink-0 rounded-full px-2 py-1 text-xs ${person.published ? "bg-soft text-accent" : "bg-paper text-muted"}`}>
+                    {person.published ? "Published" : "Draft"}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+      <Panel title={current?.id ? "Edit team member" : "Team member details"}>
+        {current ? (
+          <div className="grid gap-3">
+            <label className="grid gap-1 text-sm">
+              Name
+              <input className={fieldClass} value={current.name} onChange={(event) => setDraft({ ...current, name: event.target.value })} />
+            </label>
+            <label className="grid gap-1 text-sm">
+              Role or title
+              <input className={fieldClass} value={current.role} onChange={(event) => setDraft({ ...current, role: event.target.value })} />
+            </label>
+            <label className="grid gap-1 text-sm">
+              Short introduction
+              <textarea className={fieldClass} rows={4} value={current.bio} onChange={(event) => setDraft({ ...current, bio: event.target.value })} />
+            </label>
+            <label className="grid gap-1 text-sm">
+              Photo URL
+              <input
+                className={fieldClass}
+                type="url"
+                placeholder="https://…"
+                value={photoUrl}
+                onChange={(event) => setDraft({ ...current, image_url: event.target.value })}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              Or upload a photo (PNG, JPEG, WebP or GIF; under 900 KB)
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0];
+                  if (file) readImage(file, (image_url) => setDraft({ ...current, image_url }));
+                }}
+              />
+            </label>
+            {photo.startsWith("data:") ? <p className="text-xs text-muted">An uploaded photo is ready. Upload another image to replace it.</p> : null}
+            {photo && isPublicImageSource(photo) ? <img src={photo} alt={`${current.name} preview`} className="size-24 rounded-2xl border border-line object-cover" /> : null}
+            {photo ? <button type="button" className="w-fit text-sm font-medium text-accent" onClick={() => setDraft({ ...current, image_url: "" })}>Remove team photo</button> : null}
+            <div className="grid gap-3 sm:grid-cols-2">
+              {TEAM_PROFILE_LINKS.map(([key, label]) => (
+                <label key={key} className="grid gap-1 text-sm">
+                  {label} URL
+                  <input
+                    className={fieldClass}
+                    type="url"
+                    placeholder="https://…"
+                    value={current[key]}
+                    onChange={(event) => setDraft({ ...current, [key]: event.target.value })}
+                  />
+                </label>
+              ))}
+            </div>
+            <label className="grid gap-1 text-sm">
+              Display order
+              <input className={fieldClass} type="number" min={0} max={9999} value={current.sort_order} onChange={(event) => setDraft({ ...current, sort_order: Number(event.target.value) })} />
+            </label>
+            <Check label="Published on the About page" checked={current.published} onChange={(published) => setDraft({ ...current, published })} />
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-on-accent" onClick={() => run(() => save({ data: current }), () => { setDraft(null); reload(); })}>Save profile</button>
+              <button type="button" className="rounded-full border border-line px-4 py-2 text-sm" onClick={() => setDraft(null)}>Cancel</button>
+              {typeof currentId === "number" ? (
+                <button
+                  type="button"
+                  className="rounded-full border border-line px-4 py-2 text-sm text-red-600"
+                  onClick={() => confirm("Delete this public team profile?", () => run(() => remove({ data: { id: currentId } }), () => { setDraft(null); reload(); }))}
+                >
+                  Delete
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">Add a profile or choose one from the list to edit.</p>
+        )}
+      </Panel>
+    </div>
   );
 }
 

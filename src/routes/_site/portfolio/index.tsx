@@ -19,8 +19,8 @@ function PortfolioPage() {
     <>
       <PageIntro
         eyebrow="Portfolio"
-        title="Work the studio is willing to name."
-        body="If a live link or image is missing, it has not been published. Nothing here is a fabricated case study."
+        title="Here's What We Built."
+        body="Check out some of our named projects."
       />
       <div className="mx-auto grid max-w-6xl gap-4 px-4 pb-20 sm:px-6 md:grid-cols-2">
         {projects.map((project) => (

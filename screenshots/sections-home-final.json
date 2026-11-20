@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "HK SoftTech | Software, AI and Digital Solutions",
+      "hasCanvas": false,
+      "bodyTextLen": 5314,
+      "bodyTextHash": "73d85d50ff82ddaecde9ff4039008fb1f267f45ac9709ac427b11fb5566ca759",
+      "bodyTextPrefix": "Skip to content Home About Services Solutions Portfolio Training",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "C:\\Users\\dell\\OneDrive\\Documents\\HK SoftTech v1.2\\screenshots\\sections-home-final.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "HK SoftTech | Software, AI and Digital Solutions",
+      "hasCanvas": false,
+      "bodyTextLen": 5241,
+      "bodyTextHash": "2a39ad03254e14465de9e81a69fdba0eab356b778570596265ff6ee1434b26a4",
+      "bodyTextPrefix": "Skip to content Technology partner for growth Build Smarter. Gro",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "C:\\Users\\dell\\OneDrive\\Documents\\HK SoftTech v1.2\\screenshots\\sections-home-final-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND NOTE: no custom public/og.jpg — the platform will serve the og.grok.me placeholder. Custom cards are the default for games of every kind (DOM board/word games included), whimsical apps, creative tools, and brand-forward pages — only plain utilities (converters, CRUD trackers, admin dashboards) keep the placeholder. If this app is not a plain utility, finish the brand-asset pass per \\workspace\\.grok\\skills\\og\\SKILL.md."
+  ],
+  "authWarnings": [],
+  "verdictFile": "C:\\Users\\dell\\OneDrive\\Documents\\HK SoftTech v1.2\\screenshots\\sections-home-final.json"
+}

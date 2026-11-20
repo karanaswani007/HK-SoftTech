@@ -291,10 +291,12 @@ export function PageIntro({
   body?: string;
 }) {
   return (
-    <header className="mx-auto max-w-6xl px-4 pt-14 pb-8 sm:px-6 sm:pt-20">
-      <p className="text-xs font-semibold tracking-widest text-accent uppercase">{eyebrow}</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight text-ink sm:text-5xl">{title}</h1>
-      {body ? <p className="mt-4 max-w-2xl text-base leading-7 text-muted">{body}</p> : null}
+    <header className="mx-auto max-w-6xl px-4 pt-14 pb-8 text-center sm:px-6 sm:pt-20">
+      <h1 className="mx-auto max-w-3xl tracking-tight">
+        <span className="block text-3xl font-bold text-accent sm:text-4xl">{eyebrow}</span>
+        <span className="mt-2 block text-lg font-semibold text-ink sm:text-2xl">{title}</span>
+      </h1>
+      {body ? <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-muted sm:text-base">{body}</p> : null}
     </header>
   );
 }

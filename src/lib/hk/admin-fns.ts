@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { studioMiddleware } from "@/lib/hk/studio-middleware";
 import { LEAD_STATUSES, PROJECT_STATUSES, type StaffRole } from "@/lib/hk/labels";
+import {
+  isPublicHttpUrl,
+  isPublicImageSource,
+  publicTeamMemberSchema,
+} from "@/lib/hk/public-profile";
 import { clean, plain, plains } from "@/lib/hk/row";
 
 const CONTENT: StaffRole[] = ["super_admin", "admin", "editor"];
@@ -691,6 +696,8 @@ export const listFaqsAdmin = createServerFn({ method: "GET" })
       await sql<Record<string, unknown>>`
         select hero_label, hero_title, hero_body, about_intro, mission, vision,
                founder_name, founder_role, founder_bio, cta_title, cta_body, footer_blurb,
+               founder_image_url, founder_website_url, founder_linkedin_url,
+               founder_instagram_url, founder_github_url, founder_x_url,
                privacy_body, terms_body
         from site_settings where id = 1
       `
@@ -730,6 +737,64 @@ export const deleteFaq = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const listPublicTeamAdmin = createServerFn({ method: "GET" })
+  .middleware([studioMiddleware])
+  .handler(async ({ context }) => {
+    const { sql, role } = await staff(context.userId);
+    assert(role, CONTENT);
+    return plains(
+      await sql<Record<string, unknown>>`
+        select id, name, role, bio, image_url, website_url, linkedin_url, instagram_url,
+               github_url, x_url, sort_order, published
+        from public_team_members
+        order by sort_order, id
+      `,
+    );
+  });
+
+export const savePublicTeamMember = createServerFn({ method: "POST" })
+  .middleware([studioMiddleware])
+  .validator((input: unknown) => publicTeamMemberSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { sql, role } = await staff(context.userId);
+    assert(role, CONTENT);
+    if (data.id) {
+      await sql`
+        update public_team_members
+        set name = ${clean(data.name)}, role = ${clean(data.role)}, bio = ${clean(data.bio)},
+            image_url = ${data.image_url}, website_url = ${data.website_url},
+            linkedin_url = ${data.linkedin_url}, instagram_url = ${data.instagram_url},
+            github_url = ${data.github_url}, x_url = ${data.x_url},
+            sort_order = ${data.sort_order}, published = ${data.published}, updated_at = now()
+        where id = ${data.id}
+      `;
+    } else {
+      await sql`
+        insert into public_team_members (
+          name, role, bio, image_url, website_url, linkedin_url, instagram_url,
+          github_url, x_url, sort_order, published
+        ) values (
+          ${clean(data.name)}, ${clean(data.role)}, ${clean(data.bio)}, ${data.image_url},
+          ${data.website_url}, ${data.linkedin_url}, ${data.instagram_url},
+          ${data.github_url}, ${data.x_url}, ${data.sort_order}, ${data.published}
+        )
+      `;
+    }
+    await log(sql, context.userId, "Saved public team profile", data.name);
+    return { ok: true };
+  });
+
+export const deletePublicTeamMember = createServerFn({ method: "POST" })
+  .middleware([studioMiddleware])
+  .validator((input: unknown) => z.object({ id: z.number().int().positive() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { sql, role } = await staff(context.userId);
+    assert(role, CONTENT);
+    await sql`delete from public_team_members where id = ${data.id}`;
+    await log(sql, context.userId, "Deleted public team profile", String(data.id));
+    return { ok: true };
+  });
+
 const settingsKeys = [
   "company_name",
   "tagline",
@@ -747,6 +812,12 @@ const settingsKeys = [
   "founder_name",
   "founder_role",
   "founder_bio",
+  "founder_image_url",
+  "founder_website_url",
+  "founder_linkedin_url",
+  "founder_instagram_url",
+  "founder_github_url",
+  "founder_x_url",
   "cta_title",
   "cta_body",
   "footer_blurb",
@@ -782,6 +853,12 @@ const copyKeys = new Set<string>([
   "founder_name",
   "founder_role",
   "founder_bio",
+  "founder_image_url",
+  "founder_website_url",
+  "founder_linkedin_url",
+  "founder_instagram_url",
+  "founder_github_url",
+  "founder_x_url",
   "cta_title",
   "cta_body",
   "footer_blurb",
@@ -799,11 +876,34 @@ export const saveSettings = createServerFn({ method: "POST" })
     if (!role || (role !== "editor" && !SETTINGS.includes(role))) {
       throw new Error("You do not have permission for this action.");
     }
+    const profileUrls = [
+      "founder_website_url",
+      "founder_linkedin_url",
+      "founder_instagram_url",
+      "founder_github_url",
+      "founder_x_url",
+    ];
+    for (const key of profileUrls) {
+      const value = data[key];
+      if (typeof value === "string" && value.trim() && !isPublicHttpUrl(value.trim())) {
+        throw new Error(`${key.replaceAll("_", " ")} must be a valid HTTP or HTTPS URL.`);
+      }
+    }
+    const imageUrl = data.founder_image_url;
+    if (typeof imageUrl === "string") {
+      if (imageUrl.length > 1_250_000) {
+        throw new Error("Founder photo is too large. Upload an image under 900 KB.");
+      }
+      if (!isPublicImageSource(imageUrl.trim())) {
+        throw new Error("Founder photo must be a valid HTTP(S) URL or a supported image upload.");
+      }
+    }
     for (const key of settingsKeys) {
       if (typeof data[key] !== "string") continue;
       if (role === "editor" && !copyKeys.has(key)) continue;
+      const limit = key === "founder_image_url" ? 1_250_000 : key.endsWith("_body") ? 20000 : 2000;
       await sql.query(`update site_settings set ${key} = $1, updated_at = now() where id = 1`, [
-        clean(String(data[key])).slice(0, key.endsWith("_body") ? 20000 : 2000),
+        clean(String(data[key])).slice(0, limit),
       ]);
     }
     if (typeof data.robots_index === "boolean" && role !== "editor") {
