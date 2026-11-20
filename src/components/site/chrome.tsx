@@ -71,9 +71,9 @@ export function Header({ shell }: { shell: Shell }) {
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-card focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <div className="mx-auto flex h-20 max-w-6xl items-center gap-4 px-4 sm:px-6">
-        <Link to="/" aria-label="HK SoftTech home" className="min-w-0 shrink rounded-lg bg-card px-2 py-1">
-          <img src={logo} alt="HK SoftTech" className="block h-10 w-36 max-w-[42vw] object-contain object-left sm:h-11 sm:w-40" />
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:h-20 sm:gap-4 sm:px-6">
+        <Link to="/" aria-label="HK SoftTech home" className="flex shrink-0 items-center rounded-lg bg-card px-2 py-1">
+          <img src={logo} alt="HK SoftTech" className="block h-9 w-32 object-contain object-left sm:h-11 sm:w-40" />
         </Link>
         <nav className="ml-auto hidden items-center gap-4 text-sm font-medium text-ink xl:gap-5 lg:flex" aria-label="Primary">
           <Link to="/" className="hover:text-accent" activeOptions={{ exact: true }} activeProps={{ className: "text-accent" }}>
@@ -131,14 +131,16 @@ export function Header({ shell }: { shell: Shell }) {
             </Link>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
           <ThemeToggle />
-          <Link to="/contact" className={`${buttonStyles({ variant: "primary" })} hidden xl:inline-flex`}>
-            Start a Project
-          </Link>
+          <div className="hidden xl:block">
+            <Link to="/contact" className={buttonStyles({ variant: "primary" })}>
+              Start a Project
+            </Link>
+          </div>
           <button
             type="button"
-            className="grid h-11 w-11 place-items-center rounded-full border border-line lg:hidden"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-line sm:h-11 sm:w-11 lg:hidden"
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
@@ -148,7 +150,7 @@ export function Header({ shell }: { shell: Shell }) {
         </div>
       </div>
       {open ? (
-        <div className="fixed inset-0 top-20 z-30 overflow-y-auto bg-paper px-4 py-6 lg:hidden" role="dialog" aria-label="Mobile menu">
+        <div className="fixed inset-0 top-16 z-30 overflow-y-auto bg-paper px-4 py-6 sm:top-20 lg:hidden" role="dialog" aria-label="Mobile menu">
           <nav className="mx-auto flex max-w-lg flex-col gap-2" aria-label="Mobile">
             {LINKS.map((link) => (
               <Link
